@@ -1,0 +1,104 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{isabelle,isabellesym}
+
+\usepackage{todonotes}
+
+
+\usepackage{amsmath,amssymb}
+
+% further packages required for unusual symbols (see also
+% isabellesym.sty), use only when needed
+
+%\usepackage{amssymb}
+  %for \<leadsto>, \<box>, \<diamond>, \<sqsupset>, \<mho>, \<Join>,
+  %\<lhd>, \<lesssim>, \<greatersim>, \<lessapprox>, \<greaterapprox>,
+  %\<triangleq>, \<yen>, \<lozenge>
+
+%\usepackage{eurosym}
+  %for \<euro>
+
+%\usepackage[only,bigsqcap]{stmaryrd}
+  %for \<Sqinter>
+
+%\usepackage{eufrak}
+  %for \<AA> ... \<ZZ>, \<aa> ... \<zz> (also included in amssymb)
+
+%\usepackage{textcomp}
+  %for \<onequarter>, \<onehalf>, \<threequarters>, \<degree>, \<cent>,
+  %\<currency>
+
+% this should be the last package used
+\usepackage{pdfsetup}
+
+% urls in roman style, theory text in math-similar italics
+\urlstyle{rm}
+\isabellestyle{it}
+
+% for uniform font size
+%\renewcommand{\isastyle}{\isastyleminor}
+
+
+\begin{document}
+
+\title{Heterogeneous Dynamic Logic}
+%\author{}
+\maketitle
+
+\begin{abstract}
+
+\end{abstract}
+
+\section{Preamble}
+This Isabelle package formalizes \emph{Dynamic Logic}.
+Dynamic Logic can be thought of as a multi-modal logic where we can
+parameterize the possible state transitions inside a modality.
+The intention of this package is to formalize the fundamental notions that
+make a logic a dynamic logic and prove the formulas that hold for a dynamic
+logic irrespective of its concrete instantiation.
+To this end, we formalize Dynamic Logic as a set of locales which build upon
+each other and which can be instantiated for arbitrary dynamic logics that
+satisfy the constraints imposed by the locales' assumptions.
+
+We hope that this can help the developers of dynamic logics in multiple regards:
+First, by implementing their dynamic logic based on the Heterogeneous Dynamic Logic package,
+they can focus on the particularities of their dynamic logic while getting many
+of the well known axioms and properties of dynamic logics ``for free''.
+Secondly, due to the common core of assumptions across dynamic logics,
+this package allows for the construction of \emph{Heterogenous Dynamic Logics}
+(also called \emph{Heterogeneous Dynamic Theories})
+which allow the (often relatively complete)
+combination of multiple program logics.
+For a more elaborate introduction to the theory behind Heterogeneous Dynamic Logic,
+the interested reader is referred to the paper~\todo{cite}.
+This document will focus on the particularities of the Isabelle formalization.
+
+The remainder of this document is structured as follows:
+We begin by formalizing first-order logic (\todo{ref}) as a locale.
+Subsequently, we built upon this locale to formalize a locale for a dynamic logic (\todo{ref}).
+Here we prove the first dynamic logic axioms as well as the coincidence and bounded effect lemmas.
+Subsequently, we introduce \emph{lifting} which allows us to take one dynamic logic locale and extend
+the functionality of its programs.
+We demonstrate this on two examples (havoc operator and regular closure).
+We also introduce a futher constrained locale to reason about loop convergence.
+Finally, we introduce \emph{Heterogeneous Dynamic Theories} as a means to combine multiple dynamic logic locales into a
+single dynamic logic.
+
+\tableofcontents
+
+% sane default for proof documents
+\parindent 0pt\parskip 0.5ex
+
+% generated text of all theories
+\input{session}
+
+% optional bibliography
+\bibliographystyle{abbrv}
+\bibliography{root}
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
