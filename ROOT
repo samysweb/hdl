@@ -1,5 +1,5 @@
 session DL = HOL +
-  options [timeout = 60, document = pdf]
+  options [timeout = 120, document = pdf]
   theories 
     (* Locales for Structuring DL *)
     "FirstOrder" (* FOL *)
@@ -16,5 +16,9 @@ session DL = HOL +
     "SemiRingDL" (* FODL with semiring values *)
     "SemiRingHDL" (* HDL with 2x FODL with semiring values *)
     (*"DifferentialDL" Instantiating Differential Dynamic Logic as DL *)
+    "DLRewriting"
+    "KATRewriting"
+    "HeterogeneousRewriting"
+    "ExtensionalDynamicLogic"
   document_files
     "root.tex"

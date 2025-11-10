@@ -124,6 +124,7 @@ fun full_prog_fv_syn :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Righta
   | "full_prog_fv_syn (CHOICE \<pi>1 \<pi>2) v = ((full_prog_fv_syn \<pi>1 v) \<or> (full_prog_fv_syn \<pi>2 v))"
   | "full_prog_fv_syn (LOOP \<pi>) v = (full_prog_fv_syn \<pi> v)"
 
+(*
 fun full_dyn_FV_prog :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Rightarrow> bool"
   where
     "full_dyn_FV_prog (KATPROG \<pi>) v = dyn_prog_FV \<pi> v"
@@ -131,6 +132,7 @@ fun full_dyn_FV_prog :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Righta
   | "full_dyn_FV_prog (SEQ \<pi>1 \<pi>2) v =((full_dyn_FV_prog \<pi>1 v) \<or> (full_dyn_FV_prog \<pi>2 v))"
   | "full_dyn_FV_prog (CHOICE \<pi>1 \<pi>2) v =((full_dyn_FV_prog \<pi>1 v) \<or> (full_dyn_FV_prog \<pi>2 v))"
   | "full_dyn_FV_prog (LOOP \<pi>) v =(full_dyn_FV_prog \<pi> v)"
+*)
 
 fun full_dyn_FV_fml :: "('atom,'var,('atom, 'var, 'prog) kat_prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool"
   where
@@ -138,7 +140,7 @@ fun full_dyn_FV_fml :: "('atom,'var,('atom, 'var, 'prog) kat_prog) dyn_formula \
   | "full_dyn_FV_fml (AND \<phi> \<psi>) v = ((full_dyn_FV_fml \<phi> v) \<or> (full_dyn_FV_fml \<psi> v))"
   | "full_dyn_FV_fml (NOT \<phi>) v = (full_dyn_FV_fml \<phi> v)"
   | "full_dyn_FV_fml (FOL_ALL v \<phi>) w = (if (v=w) then False else (full_dyn_FV_fml \<phi> v))"
-  | "full_dyn_FV_fml (BOX \<pi> \<phi>) v = ((full_dyn_FV_prog \<pi> v) \<or> (full_dyn_FV_fml \<phi> v))"
+  | "full_dyn_FV_fml (BOX \<pi> \<phi>) v = ((full_prog_fv_syn \<pi> v) \<or> (full_dyn_FV_fml \<phi> v))"
 
 fun full_dyn_prog_BV :: " ('prog \<Rightarrow> 'var \<Rightarrow> bool) \<Rightarrow>('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Rightarrow> bool"
   where
@@ -592,9 +594,9 @@ qed
     by blast
 qed
 
-sublocale kat_dl : dynLog
+(*sublocale kat_dl : dynLog
     "atom_eval" "atom_fv_syn" "state_eval" "full_prog_eval" "full_prog_fv_syn"
-  by unfold_locales
+  by unfold_locales*)
 
 lemma BV_overapprox:
   assumes "\<And> \<pi> v . dyn_prog_bv_sem \<pi> v \<Longrightarrow> BV \<pi> v"
@@ -1229,6 +1231,115 @@ proof -
     unfolding theory_valid_def
     by blast
 qed
+
+lemma dl_seq: "kat_dl.dyn_eval (\<lbrakk> (\<alpha> ; \<beta>) \<rbrakk> \<phi>) \<mu> = kat_dl.dyn_eval (\<lbrakk>\<alpha>\<rbrakk>(\<lbrakk>\<beta>\<rbrakk>\<phi>)) \<mu>"
+proof -
+  have "kat_dl.dyn_eval (\<lbrakk> (\<alpha>;\<beta>) \<rbrakk> \<phi>) \<mu> =
+         (\<forall>s. full_prog_eval (\<alpha>;\<beta>) \<mu> s \<longrightarrow> kat_dl.dyn_eval \<phi> s)"
+    by simp
+  also have "... = (\<forall>s. (\<exists>t. full_prog_eval \<alpha> \<mu> t \<and> full_prog_eval \<beta> t s) \<longrightarrow> kat_dl.dyn_eval \<phi> s)"
+    by (meson KATDynLog.full_prog_eval_int.simps(3) KATDynLog_axioms full_prog_eval_def full_prog_eval_int_n_monotone le_add2 nat_le_iff_add)
+  also have "... = (\<forall>t. full_prog_eval \<alpha> \<mu> t \<longrightarrow> (\<forall>s. full_prog_eval \<beta> t s \<longrightarrow> kat_dl.dyn_eval \<phi> s))"
+    by blast
+  also have "... = kat_dl.dyn_eval (\<lbrakk> \<alpha> \<rbrakk> \<lbrakk> \<beta> \<rbrakk> \<phi>) \<mu>"
+    by simp
+  finally show ?thesis .
+qed
+
+lemma dia_is_ex:
+  "kat_dl.dyn_eval (\<langle> \<pi> \<rangle> \<phi>) \<mu> = (\<exists>\<omega>. full_prog_eval \<pi> \<mu> \<omega> \<and> kat_dl.dyn_eval \<phi> \<omega>)"
+  using kat_dl.DIAMOND_def by auto
+
+
+fun REP :: "('a,'vr,'pr) kat_prog \<Rightarrow> nat \<Rightarrow> ('a,'vr,'pr) kat_prog" where
+  "REP \<pi> (Suc n) = (\<pi> ; (REP \<pi> n))"
+| "REP \<pi> 0 = (? FOLTRUE)"
+
+lemma rep_is_kleene:
+  assumes inrep: "full_prog_eval (REP \<pi> n) \<mu> \<omega>"
+  shows "full_prog_eval (\<pi>*) \<mu> \<omega>"
+proof -
+  have "full_prog_eval (REP \<pi> n) \<mu> \<omega> \<Longrightarrow> full_prog_eval (\<pi>*) \<mu> \<omega>"
+  proof (induct n arbitrary: \<mu>)
+    case 0
+    hence "state_eval \<mu> = state_eval \<omega>"
+      using full_prog_eval_def by auto 
+    hence "full_prog_eval_int 1 (\<pi>*) \<mu> \<omega>"
+      by simp
+    thus ?case
+      using full_prog_eval_def by blast
+  next
+    case indhyp: (Suc n)
+    then obtain \<nu> where nu: "full_prog_eval \<pi> \<mu> \<nu> \<and> full_prog_eval (REP \<pi> n) \<nu> \<omega> "
+      using full_prog_eval_def by auto
+    with indhyp have "full_prog_eval \<pi> \<mu> \<nu> \<and> full_prog_eval (\<pi>*) \<nu> \<omega>"
+      by blast
+    hence "full_prog_eval (\<pi> ; (\<pi>*)) \<mu> \<omega>"
+      by (meson full_prog_eval_def full_prog_eval_int.simps(3) full_prog_eval_int_n_monotone nat_le_linear) 
+    thus ?case
+      by (metis add_eq_if diff_Suc_1 full_prog_eval_def full_prog_eval_int.simps(5) less_add_Suc1) 
+  qed
+  with inrep show ?thesis by blast
+qed
+    thm full_prog_eval_int.simps
+lemma kleene_is_rep:
+ assumes inkleene: "full_prog_eval (\<pi>*) \<mu> \<omega>"
+  shows "\<exists>n. full_prog_eval (REP \<pi> n) \<mu> \<omega>"
+proof -
+  {
+    fix n
+    have "full_prog_eval_int n (\<pi>*) \<mu> \<omega> \<Longrightarrow> ?thesis"
+    proof (induct n arbitrary: \<mu>)
+      case 0
+      then show ?case by auto
+    next
+      case indhyp: (Suc n)
+      hence "state_eval \<mu> = state_eval \<omega> \<or>
+          full_prog_eval_int n (\<pi>;(\<pi>*))\<mu> \<omega> \<or>
+          full_prog_eval_int n (\<pi>*) \<mu> \<omega>" 
+        using full_prog_eval_int.simps(5) by fastforce
+      then show ?case
+      proof (elim disjE)
+        assume "state_eval \<mu> = state_eval \<omega>"
+        thus ?case
+          by (metis REP.simps(2) dyn_eval.simps(1) fol_true_valid full_prog_eval_def full_prog_eval_int.simps(2) theory_valid_def) 
+      next
+        assume "full_prog_eval_int n (\<pi>;(\<pi>*)) \<mu> \<omega>" 
+        then obtain \<tau> where "full_prog_eval_int n \<pi> \<mu> \<tau> \<and> full_prog_eval_int n (\<pi>*) \<tau> \<omega>"
+          using full_prog_eval_int.simps(3) by blast
+        with indhyp obtain n' where "full_prog_eval \<pi> \<mu> \<tau> \<and> full_prog_eval (REP \<pi> n') \<tau> \<omega>"
+          using full_prog_eval_def by blast
+        hence "full_prog_eval (REP \<pi> (Suc n')) \<mu> \<omega>" using REP.simps
+          by (smt (z3) full_prog_eval_def full_prog_eval_int.simps(3) full_prog_eval_int_n_monotone nat_le_linear)
+        thus ?case by blast
+      next
+        assume "full_prog_eval_int n (\<pi>*) \<mu> \<omega>"
+        with indhyp show ?case by simp
+      qed
+    qed
+  }
+  with inkleene show ?thesis
+    using full_prog_eval_def by blast
+qed
+
+lemma kleene_rep_rewrite:
+  "(full_prog_eval (\<pi>*) \<mu> \<omega>) = (\<exists>n. full_prog_eval (REP \<pi> n) \<mu> \<omega>)"
+  using rep_is_kleene[of \<pi> _ \<mu> \<omega>] kleene_is_rep[of \<pi> \<mu> \<omega>]
+  by blast
+
+lemma full_prog_rewrite_seq:
+  "full_prog_eval (\<alpha>;\<beta>) \<sigma> \<mu> = (\<exists> \<nu> . (full_prog_eval \<alpha> \<sigma> \<nu> \<and> full_prog_eval \<beta> \<nu> \<mu>))"
+  unfolding full_prog_eval_def
+  unfolding full_prog_eval_int.simps
+  using full_prog_eval_int_n_monotone
+  by (meson nat_le_linear)
+
+lemma full_prog_rewrite_choice:
+  "full_prog_eval (\<alpha> \<squnion> \<beta>) \<sigma> \<mu> = (full_prog_eval \<alpha> \<sigma> \<mu> \<or> full_prog_eval \<beta> \<sigma> \<mu>)"
+  unfolding full_prog_eval_def
+  unfolding full_prog_eval_int.simps
+  using full_prog_eval_int_n_monotone
+  by blast
 
 end
 

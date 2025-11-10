@@ -5,7 +5,10 @@ theory SemiRingDL
     "HavocDynamicLogic"
     "KATDynamicLogic"
     "NatKATDynamicLogic"
+    "KATRewriting"
 begin
+
+declare [[coercion_enabled]]
 
 type_synonym 'semiringfol_val semiringfol_state = "semiringfol_var \<Rightarrow> 'semiringfol_val"
 
@@ -73,9 +76,25 @@ interpretation semiring_dl_havoc :
   HavocDynLog "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_prog_eval semiring_prog_fv
   by standard
 
+declare [[coercion "HPROG ::
+    'a semiring_prog \<Rightarrow>
+    ('a semiringfol_atom, char list, 'a semiring_prog) havoc_prog"]]
+
+
 interpretation semiring_dl_full :
   KATDynLog "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV
   using KATDynLog_def semiring_dl_havoc.havoc_dl.dynLog_axioms by blast
+
+thm semiring_dl_full.kat_dl.dynLog_axioms
+
+declare [[coercion "KPROG :: 
+    ('a semiringfol_atom, char list,
+     'a semiring_prog) havoc_prog \<Rightarrow>
+    ('a semiringfol_atom, char list,
+    ('a semiringfol_atom, char list,
+     'a semiring_prog) havoc_prog) kat_prog"]]
+
+thm semiring_dl_full.dyn_axiom_I
 
 definition Varn :: "semiringfol_var \<Rightarrow> (nat) semiringfol_term"
   where "Varn v = (Var v)"
@@ -294,6 +313,12 @@ proof
         by blast
     qed
   qed
+
+interpretation kleene_dyn_log:
+  KleeneDynLog "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV
+  apply standard
+    unfolding state_id_def unfolding id_def
+  by presburger
 
 (*lemma SemiRingDL_axiom_assign:
   fixes x :: "semiringfol_var"

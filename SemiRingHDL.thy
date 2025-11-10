@@ -7,6 +7,7 @@ theory SemiRingHDL
     "SemiRingFOL"
     "SemiRingDL"
     "HeterogeneousDynamicLogic"
+    "HeterogeneousRewriting"
 begin
 
 
@@ -51,8 +52,8 @@ fun semiringhfol_AtomFVSyn :: "('semiringhfol_val :: ordered_semiring) semiringh
 (* Sanity check: semiring DL + semiring DL *)
 interpretation semiring_hdl:
   HeterogeneousDynamicLogic.HeterogeneousDynLog
-    "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV
-    "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV
+    "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_full.full_prog_eval semiring_dl_full.full_prog_fv_syn
+    "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_full.full_prog_eval semiring_dl_full.full_prog_fv_syn
     semiringhfol_AtomEval semiringhfol_AtomFVSyn
 proof
   fix a :: "('semiringhfol_val :: ordered_semiring) semiringhfol_atom"
@@ -189,4 +190,82 @@ proof
     qed
   qed
 qed
+
+interpretation hdl_rewriting_1:
+  HeterogeneousRewriting
+    "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV
+    "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_full.full_prog_eval semiring_dl_full.full_prog_fv_syn
+    semiringhfol_AtomEval semiringhfol_AtomFVSyn
+  unfolding HeterogeneousRewriting_def
+  apply (intro conjI)
+  using semiring_dl_full.KATDynLog_axioms
+   apply blast
+  using semiring_hdl.HeterogeneousDynLog_axioms
+  by blast
+
+thm hdl_rewriting_1.check_rewrite
+thm hdl_rewriting_1.seq_rewrite
+thm hdl_rewriting_1.choice_rewrite
+thm hdl_rewriting_1.loop_rewrite
+
+interpretation full_hdl_rewriting:
+  FullHeterogeneousRewriting
+    "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_full.full_prog_eval semiring_dl_full.full_prog_fv_syn
+    "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_full.full_prog_eval semiring_dl_full.full_prog_fv_syn
+    semiringhfol_AtomEval semiringhfol_AtomFVSyn
+  apply standard
+    unfolding state_id_def unfolding id_def
+    by presburger
+
+  thm full_hdl_rewriting.kat_rewriting.kat_rule1
+  thm full_hdl_rewriting.kat_rewriting.kat_rule2
+  thm full_hdl_rewriting.kat_rewriting.kat_rule3
+  thm full_hdl_rewriting.kat_rewriting.kat_rule4
+  thm full_hdl_rewriting.kat_rewriting.kat_rule5
+  thm full_hdl_rewriting.kat_rewriting.kat_rule6
+  thm full_hdl_rewriting.kat_rewriting.kat_rule7
+  thm full_hdl_rewriting.kat_rewriting.kat_rule8
+  thm full_hdl_rewriting.kat_rewriting.kat_rule9
+  thm full_hdl_rewriting.kat_rewriting.kat_rule10
+  thm full_hdl_rewriting.kat_rewriting.kat_rule11
+  thm full_hdl_rewriting.kat_rewriting.kat_rule12
+  thm full_hdl_rewriting.kat_rewriting.kat_rule13
+  thm full_hdl_rewriting.kat_rewriting.kat_rule14
+  thm full_hdl_rewriting.kat_rewriting.kat_rule15
+
+  thm semiring_hdl.hdl_kat.full_prog_eval_def
+
+(* TEST *)
+
+lemma test:
+  fixes \<alpha> :: "((('a::ordered_semiring) semiringfol_atom, 'a semiringfol_atom,
+    'a semiringhfol_atom) het_atom,
+   char list + char list,
+   (('a semiringfol_atom, 'a semiringfol_atom,
+     'a semiringhfol_atom) het_atom,
+    char list + char list,
+    (('a semiringfol_atom, char list,
+      ('a semiringfol_atom, char list,
+       'a semiring_prog) havoc_prog) kat_prog,
+     ('a semiringfol_atom, char list,
+      ('a semiringfol_atom, char list,
+       'a semiring_prog) havoc_prog) kat_prog) het_prog) havoc_prog) kat_prog"
+  shows "\<And> a b . \<not> (semiring_hdl.hdl_kat.full_prog_eval ((? (folnot FOLTRUE));\<alpha>) a b)"
+proof -
+  have "\<And> a b . \<not> (semiring_hdl.hdl_kat.full_prog_eval ((? (folnot FOLTRUE))) a b)"
+    unfolding semiring_hdl.hdl_kat.full_prog_eval_def
+    unfolding semiring_hdl.hdl_kat.full_prog_eval_int.simps
+    unfolding semiring_hdl.hdl_havoc.havoc_dl.dyn_eval.simps
+    unfolding semiring_hdl.het_fol.fol_eval.simps
+    unfolding FOLTRUE_def
+    using semiring_hdl.het_fol.fol_hilbert_axiom_1 by auto
+  thus "\<And> a b . \<not> (semiring_hdl.hdl_kat.full_prog_eval ((? (folnot FOLTRUE));\<alpha>) a b)"
+    using full_hdl_rewriting.kat_rewriting.kat_rule10[of \<alpha>]
+    using semiring_hdl.hdl_kat.kat_dl.prog_eval_cong[of "(? folnot FOLTRUE;\<alpha>)"
+        "(? folnot FOLTRUE)"]
+    by auto
+qed
+  
+
+
 end

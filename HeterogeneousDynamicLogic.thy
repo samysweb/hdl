@@ -530,9 +530,17 @@ interpretation het_dl_havoc :
     HavocDynLog het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
   using HavocDynLog_def het_dl.dynLog_axioms by blast
 
+sublocale hdl_havoc:
+    HavocDynLog het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
+  using het_dl_havoc.HavocDynLog_axioms by blast
+
 interpretation het_dl_kat :
     KATDynLog  "het_atom_eval" "het_atom_fv_syn" "het_state_eval" "het_dl_havoc.full_prog_eval" "het_dl_havoc.full_prog_FV"
   using KATDynLog_def het_dl_havoc.havoc_dl.dynLog_axioms by blast
+
+sublocale hdl_kat:
+    KATDynLog  "het_atom_eval" "het_atom_fv_syn" "het_state_eval" "het_dl_havoc.full_prog_eval" "het_dl_havoc.full_prog_FV"
+  using het_dl_kat.KATDynLog_axioms by force
 
 fun is_het_prog_pure :: "nat \<Rightarrow> ('prog1, 'prog2) het_prog \<Rightarrow> bool"
   where
@@ -722,6 +730,34 @@ fun fml_purify_2 :: "(
   | "fml_purify_2 (FOL_ALL (Inr v) \<phi>) = (FOL_ALL v (fml_purify_2 \<phi>))"
   | "fml_purify_2 (FOL_ALL (Inl v) \<phi>) = undefined"
   | "fml_purify_2 (BOX \<pi> \<phi>) = (BOX (prog_purify_2 \<pi>) (fml_purify_2 \<phi>))"
+
+lemma purify_heterify_inverse:
+  "(fol_purify_1 (fol_heterify_1 P)) = P"
+proof (induct P)
+  case (ATOM x)
+  then show ?case
+    unfolding fol_heterify_1.simps
+    unfolding fol_purify_1.simps
+    by simp
+next
+  case (AND P1 P2)
+  then show ?case
+    unfolding fol_heterify_1.simps
+    unfolding fol_purify_1.simps
+    by simp
+next
+  case (NOT P)
+  then show ?case
+    unfolding fol_heterify_1.simps
+    unfolding fol_purify_1.simps
+    by simp
+next
+  case (FOL_ALL x1a P)
+  then show ?case
+    unfolding fol_heterify_1.simps
+    unfolding fol_purify_1.simps
+    by simp
+qed
 
 lemma dyn_het_equiv_0:
   assumes "is_fml_pure 0 \<phi>"

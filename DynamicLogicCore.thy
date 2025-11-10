@@ -66,7 +66,6 @@ begin
   notation NOT ("\<rceil> _" [130] 130)
   notation FOL_ALL ("\<bbbA> _ . _" 200)
 
-
   definition DYNTRUE :: "('atom,'var,'prog) dyn_formula"
     where[simp]: "DYNTRUE = (FOL FOLTRUE)"
 

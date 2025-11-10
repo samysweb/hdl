@@ -3,6 +3,9 @@ theory PDL
     Main
     DynamicLogicCore
     DynamicLogic
+    HavocDynamicLogic
+    KATDynamicLogic
+    KATRewriting
 begin
 
 (* PDL does not have first-order variables *)
@@ -112,4 +115,17 @@ interpretation pdlDLFull : dynLog
     by simp
 qed*)
 
+interpretation regular_pdl :
+  KATDynLog "pdl_atom_eval" "pdl_fv_syn" "state_id"
+    "pdl_prog_eval I" "pdl_prog_fv_syn"
+  unfolding KATDynLog_def
+    using pdlDLFull.dynLog_axioms
+    by blast
+
+interpretation regular_pdl_kat :
+KleeneDynLog "pdl_atom_eval" "pdl_fv_syn" "state_id"
+    "pdl_prog_eval I" "pdl_prog_fv_syn"
+  apply standard
+  unfolding state_id_def id_def
+  by presburger
 end

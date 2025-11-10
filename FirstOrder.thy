@@ -715,6 +715,51 @@ lemma fol_hilbert_mp:
   using assms
   unfolding fol_valid_def
   by force
+
+(* Boolean Algebra *)
+
+lemma "\<And>a b c. fol_eval ((a foland b) foland c) = fol_eval (a foland (b foland c))"
+  unfolding fol_eval.simps
+  by simp
+
+lemma bool_and_comm: "\<And>a b. fol_eval (a foland b) = fol_eval (b foland a)"  
+  unfolding fol_eval.simps
+  by auto
+
+lemma "\<And>a b c. fol_eval ((a or b) or c) = fol_eval (a or (b or c) )"
+  unfolding OR_def fol_eval.simps
+  by auto
+
+lemma "\<And>a b. fol_eval (a or b) = fol_eval (b or a)"
+  unfolding OR_def fol_eval.simps
+  by auto
+
+lemma "\<And>x y z. fol_eval (x foland (y or z)) = fol_eval (x foland y or x foland z)"
+  unfolding OR_def fol_eval.simps
+  by auto
+
+lemma bool_or_distrib: "\<And>x y z. fol_eval (x or y foland z) = fol_eval ((x or y) foland (x or z))"
+  unfolding OR_def fol_eval.simps
+  by auto
+
+lemma "\<And>x. fol_eval (x foland FOLTRUE) = fol_eval x"
+  unfolding fol_eval.simps
+  by auto
+
+lemma "\<And>x. fol_eval (x or folnot FOLTRUE) = fol_eval x"
+  unfolding OR_def fol_eval.simps
+  by auto
+
+lemma "\<And>x. fol_eval (x foland folnot x) = fol_eval (folnot FOLTRUE)"
+  unfolding OR_def fol_eval.simps
+  by auto
+
+lemma "\<And>x. fol_eval (x or folnot x) = fol_eval FOLTRUE"
+  unfolding fol_eval.simps OR_def
+  by auto
+
+  
+
 end
 
 end
