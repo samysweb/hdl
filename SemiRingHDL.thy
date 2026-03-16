@@ -1,3 +1,12 @@
+section\<open>Heterogeneous Instantiations\<close>
+text\<open>
+Based on the rewriting results established above,
+we now also instantiate our heterogeneous dynamic theory locale.
+As a proof of concept, and to validate our assumptions,
+we formalize a combination of two (possibly different)
+variants of a semi-ring dynamic theory.
+\<close>
+
 theory SemiRingHDL
   imports
     Main
@@ -198,7 +207,7 @@ interpretation hdl_rewriting_1:
     semiringhfol_AtomEval semiringhfol_AtomFVSyn
   unfolding HeterogeneousRewriting_def
   apply (intro conjI)
-  using semiring_dl_full.KATDynLog_axioms
+  using semiring_dl_full.regular_lifting_axioms
    apply blast
   using semiring_hdl.HeterogeneousDynLog_axioms
   by blast

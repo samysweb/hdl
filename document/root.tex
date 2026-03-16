@@ -6,6 +6,7 @@
 
 
 \usepackage{amsmath,amssymb}
+\usepackage{mathtools}
 
 % further packages required for unusual symbols (see also
 % isabellesym.sty), use only when needed
@@ -31,6 +32,8 @@
 % this should be the last package used
 \usepackage{pdfsetup}
 
+\usepackage{cleveref}
+
 % urls in roman style, theory text in math-similar italics
 \urlstyle{rm}
 \isabellestyle{it}
@@ -46,43 +49,80 @@
 \maketitle
 
 \begin{abstract}
-
+Formally verifying systems that combine multiple programming languages
+requires reasoning across distinct program logics at once.
+This work formalizes the theory of \emph{Heterogeneous Dynamic Logic} (HDL).
+Dynamic logics are multi-modal logics parameterized by a program language
+that determines the state transitions inside a modality.
+We capture the essential structure shared by all dynamic logics.
+in the notion of a \emph{dynamic theory},
+formalized as an Isabelle locale.
+Our dynamic theory locale formalizes semantic coincidence and bounded-effect
+properties for a given theory and proves axiom schemata and proof rules
+common to all dynamic theories
+We then formalize two key operations on dynamic theories:
+Lifting extends a dynamic theory with new program constructs
+(e.g., the havoc operator, or regular program closure),
+while combination merges multiple dynamic theories into a
+single \emph{heterogeneous dynamic theory} enabling cross-language reasoning.
+We additionally introduce a constrained variant of dynamic theories
+that supports KAT-style rewriting.
+Our locales are instantiated for propositional dynamic logic, and
+a first-order dynamic logic over ordered semi-ring terms.
 \end{abstract}
 
-\section{Preamble}
-This Isabelle package formalizes \emph{Dynamic Logic}.
-Dynamic Logic can be thought of as a multi-modal logic where we can
-parameterize the possible state transitions inside a modality.
+\section{Introduction}
+This Isabelle package formalizes the results of the paper
+\emph{Heterogeneous Dynamic Logic: Provability Modulo Program Theories}~\cite{DBLP:journals/corr/abs-2507-08581}.
+Dynamic Logics in general can be thought of as a multi-modal logic where
+we can parameterize the possible state transitions inside a modality.
 The intention of this package is to formalize the fundamental notions that
-make a logic a dynamic logic and prove the formulas that hold for a dynamic
-logic irrespective of its concrete instantiation.
-To this end, we formalize Dynamic Logic as a set of locales which build upon
-each other and which can be instantiated for arbitrary dynamic logics that
+make a logic a dynamic logic.
+We summarize these fundamental assumptions in the notion of a \emph{dynamic theory}
+and prove the validity of axiomatic schemata
+that hold for a dynamic theory irrespective of its concrete instantiation.
+To this end, we formalize a dynamic theory as a locale.
+This locale can be instantiated for arbitrary dynamic logics that
 satisfy the constraints imposed by the locales' assumptions.
 
 We hope that this can help the developers of dynamic logics in multiple regards:
-First, by implementing their dynamic logic based on the Heterogeneous Dynamic Logic package,
-they can focus on the particularities of their dynamic logic while getting many
-of the well known axioms and properties of dynamic logics ``for free''.
-Secondly, due to the common core of assumptions across dynamic logics,
-this package allows for the construction of \emph{Heterogenous Dynamic Logics}
-(also called \emph{Heterogeneous Dynamic Theories})
-which allow the (often relatively complete)
-combination of multiple program logics.
+First, by implementing their logic as a dynamic theory based on the Heterogeneous Dynamic Logic package,
+they can focus on the particularities of their dynamic theory while getting many
+of the well known axioms and properties of dynamic theories ``for free''.
+Secondly, due to the common core of assumptions across dynamic theories,
+this package allows for the construction of \emph{heterogenous dynamic theories},
+which allow the (often relatively complete) combination of multiple program logics.
 For a more elaborate introduction to the theory behind Heterogeneous Dynamic Logic,
-the interested reader is referred to the paper~\todo{cite}.
+the interested reader is referred to the paper.
 This document will focus on the particularities of the Isabelle formalization.
 
+\paragraph{Overview.}
 The remainder of this document is structured as follows:
-We begin by formalizing first-order logic (\todo{ref}) as a locale.
-Subsequently, we built upon this locale to formalize a locale for a dynamic logic (\todo{ref}).
-Here we prove the first dynamic logic axioms as well as the coincidence and bounded effect lemmas.
-Subsequently, we introduce \emph{lifting} which allows us to take one dynamic logic locale and extend
-the functionality of its programs.
-We demonstrate this on two examples (havoc operator and regular closure).
-We also introduce a futher constrained locale to reason about loop convergence.
-Finally, we introduce \emph{Heterogeneous Dynamic Theories} as a means to combine multiple dynamic logic locales into a
-single dynamic logic.
+We begin by formalizing first-order logic (\Cref{sec:first-order}) as a locale.
+Subsequently, we built upon this locale to formalize a locale for a
+dynamic theory (\Cref{sec:dynlog}).
+Here we prove the first dynamic theory axioms as well
+as the coincidence and bounded effect lemmas.
+Subsequently, we introduce \emph{lifting} which allows us to take one
+dynamic theory locale and extend the functionality of its programs
+(\Cref{sec:lifting}).
+We demonstrate this on two examples: The havoc operator
+(\Cref{subsec:lifting:havoc}) and the regular closure over a program language
+(\Cref{subsec:lifting:regular}).
+We also introduce a further constrained locale to reason about loop convergence
+(\Cref{subsubsec:lifting:nat-regular}).
+Finally, we introduce \emph{Heterogeneous Dynamic Theories}
+as a means to combine multiple dynamic logic locales into a
+single dynamic logic (\Cref{sec:heterogeneous}).
+In addition to these results, we introduce a variant of dynamic logics
+which are slightly further constrained (\Cref{sec:dl-rewriting}),
+that enable reasoning about dynamic theories using
+KAT-style rewriting (\Cref{subsec:kat-reasoning}).
+We also present instantiations of our locales for propositional dynamic logic
+(\Cref{subsec:inst:pdl}),
+a semi-ring first-order dynamic logic (\Cref{subsec:inst:fodl}),
+and differential dynamic logic as formalized in the AFP~\cite{Differential_Dynamic_Logic-AFP}
+(separate Isabelle session).
 
 \tableofcontents
 

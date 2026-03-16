@@ -1,3 +1,16 @@
+subsection\<open>Semi-Ring First-Order Dynamic Logic\<close>
+text\<open>
+\label{subsec:inst:fodl}
+As a more complex example of a dynamic logic,
+we formalize a first-order dynamic logic with ordered semi-ring terms
+\<close>
+
+subsubsection\<open>First-Order Core\<close>
+text\<open>
+We first define the first-order core on which we build our first-order
+dynamic logic
+\<close>
+
 theory SemiRingFOL
   imports
     Main

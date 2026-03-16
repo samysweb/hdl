@@ -1,8 +1,35 @@
+section\<open>Lifted Dynamic Theories\<close>
+
+text\<open>
+\label{sec:lifting}
+Lifting allows us to take a given dynamic theory,
+formalized in an Isabelle locale,
+and to extend it with additional programming language features.
+We will demonstrate this technique on two concrete examples:
+\begin{itemize}
+\item \emph{Havoc} extends a given dynamic theory with the program construct
+  $x \coloneqq *$;
+\item \emph{Regular Closure} builds the regular closure over the programs of
+a given dynamic logic.
+\end{itemize}
+While the former lifting technically does not increase the expressivity
+of a given dynamic theory on its own, it serves as an accessible introduction
+and can increase expressivity when, e.g., combined with regular closure.
+\<close>
+
+subsection\<open>Havoc Lifting\<close>
+text\<open>
+\label{subsec:lifting:havoc}
+\<close>
+
 theory HavocDynamicLogic
   imports
     Main
     "DynamicLogic"
 begin
+
+subsubsection\<open>Syntax\<close>
+text\<open>We define the syntax of a dynamic theory lifted with havoc as follows:\<close>
 
 datatype ('a,'vr,'pr) havoc_prog  =
   HPROG "'pr"
@@ -10,8 +37,12 @@ datatype ('a,'vr,'pr) havoc_prog  =
 
 notation HAVOC ("_:=*" 20)
 
-locale HavocDynLog =
-    dynLog atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
+subsubsection\<open>Semantics\<close>
+text\<open>The semantics of this extended programming language are then defined
+as follows:\<close>
+
+locale havoc_lifting =
+    dynamic_theory atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
     for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
     and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
     and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
@@ -24,22 +55,34 @@ fun full_prog_eval :: "('atom,'var,'prog) havoc_prog \<Rightarrow> 'state \<Righ
     "full_prog_eval (HPROG \<pi>) \<mu> \<omega> = prog_eval \<pi> \<mu> \<omega>"
   | "full_prog_eval (HAVOC v) \<mu> \<omega> = fol_equal_everywhere_but v \<mu> \<omega>"
 
+text\<open>The semantics allow us to define the syntactic overapproximation of
+free variables as follows:\<close>
 
 fun full_prog_FV :: "('atom,'var,'prog) havoc_prog \<Rightarrow> 'var \<Rightarrow> bool"
   where
     "full_prog_FV (HPROG \<pi>) v = dyn_prog_FV \<pi> v"
   | "full_prog_FV (HAVOC v) w = False"
 
+text\<open>
+It furthermore allows us to define the bound variables of a given program as follows
+(assuming a given definition of syntactically bound variables \texttt{BV} for the underlying
+dynamic theory):\<close>
+
 fun full_prog_BV :: "('prog \<Rightarrow> 'var \<Rightarrow> bool) \<Rightarrow> ('atom,'var,'prog) havoc_prog \<Rightarrow> 'var \<Rightarrow> bool"
   where
     "full_prog_BV BV (HPROG \<pi>) v = BV \<pi> v"
   | "full_prog_BV BV (HAVOC v) w = (v=w)"
 
-sublocale havoc_dl : dynLog
+subsubsection\<open>Dynamic Theory and Proof Rules\<close>
+text\<open>
+With the definitions from above in place,
+we can then prove that the resulting construct is once again a dynamic theory.
+Hence, it inherits all properties established for dynamic theories.
+\<close>
+
+sublocale havoc_dl : dynamic_theory
     atom_eval atom_fv_syn state_eval full_prog_eval full_prog_FV
 proof
-  have dynLogCore_instantiated: "dynLogCore atom_eval atom_fv_syn state_eval full_prog_eval full_prog_FV"
-  proof 
     show "\<And>\<pi>. finite (Collect (full_prog_FV \<pi>))"
     proof -
       fix \<pi>
@@ -109,22 +152,6 @@ proof
   qed
 qed
 
-  show "\<And>\<pi>. finite (Collect (full_prog_FV \<pi>))"
-    using dynLogCore_instantiated
-    by (simp add: dynLogCore.prog_fv_finite)
-
-  show "\<And>\<pi> V \<mu> \<omega> \<nu>.
-           (\<forall>v. full_prog_FV \<pi> v \<longrightarrow> V v) \<and> fol_states_agree_on V \<mu> \<omega> \<and> full_prog_eval \<pi> \<mu> \<nu> \<longrightarrow>
-           (\<exists>\<upsilon>. full_prog_eval \<pi> \<omega> \<upsilon> \<and> fol_states_agree_on V \<nu> \<upsilon>)"
-    using dynLogCore_instantiated
-    using dynLogCore.prog_fv_overapprox
-    by (smt (verit, ccfv_threshold))
-  show "\<forall>\<pi> \<mu> \<omega>. (\<forall>v. state_eval \<mu> v = state_eval \<omega> v) \<longrightarrow> full_prog_eval \<pi> \<mu> = full_prog_eval \<pi> \<omega>"
-    using dynLogCore_instantiated
-    using dynLogCore.prog_var_determinance
-    by blast
-qed
-
 lemma BV_overapprox:
   assumes "\<And> \<pi> v . dyn_prog_bv_sem \<pi> v \<Longrightarrow> BV \<pi> v"
   shows "havoc_dl.dyn_prog_bv_sem \<pi> v \<Longrightarrow> full_prog_BV BV \<pi> v"
@@ -142,6 +169,11 @@ next
     unfolding fol_states_agree_on_def
     by auto
 qed
+
+text\<open>
+To handle the newly introduced havoc operator, we introduce the following
+proof rule:
+\<close>
 
 lemma dyn_axiom_havoc:
   fixes v :: "'var"
@@ -166,6 +198,11 @@ proof -
     using dir1 dir2
     by simp
 qed
+
+text\<open>
+Additionally, we introduce the following proof rule which allows
+us to lift valid results from the underlying theory to the lifted theory:
+\<close>
 
 fun translate :: "('atom, 'var, 'prog) dyn_formula \<Rightarrow>('atom, 'var, ('atom, 'var, 'prog) havoc_prog) dyn_formula"
   where

@@ -1,5 +1,5 @@
-session DL = HOL +
-  options [timeout = 120, document = pdf]
+session Heterogeneous_Dynamic_Logic = HOL +
+  options [timeout = 300, document = pdf, document_output = "output", document_variants = "outline=/proof,/ML"]
   theories 
     (* Locales for Structuring DL *)
     "FirstOrder" (* FOL *)
@@ -11,8 +11,8 @@ session DL = HOL +
     "HeterogeneousDynamicLogic" (* Heterogeneous Construction *)
 
     (* Instantiations *)
-    "SemiRingFOL" (* just FOL with semiring values (e.g. Int/Nat/Real) *)
     "PDL" (* PDL *)
+    "SemiRingFOL" (* just FOL with semiring values (e.g. Int/Nat/Real) *)
     "SemiRingDL" (* FODL with semiring values *)
     "SemiRingHDL" (* HDL with 2x FODL with semiring values *)
     (*"DifferentialDL" Instantiating Differential Dynamic Logic as DL *)
@@ -22,3 +22,5 @@ session DL = HOL +
     "ExtensionalDynamicLogic"
   document_files
     "root.tex"
+    "root.bib"
+

@@ -1,8 +1,18 @@
+subsection\<open>Regular Lifting\<close>
+
+text\<open>
+\label{subsec:lifting:regular}
+We now introduce a second lifting which significantly increases the
+expressivity of the underlying theory's programming language.
+\<close>
+
 theory KATDynamicLogic
   imports
     Main
     "DynamicLogic"
 begin
+subsubsection\<open>Syntax\<close>
+text\<open>We define the syntax of lifted programs as follows:\<close>
 
 datatype ('a,'vr,'pr) kat_prog  =
   KATPROG "'pr"
@@ -16,14 +26,22 @@ notation SEQ ("_;_" 40)
 notation CHOICE ("_\<squnion>_" 50)
 notation LOOP ("(_)*" 60)
 
-locale KATDynLog =
-    dynLog atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
+locale regular_lifting =
+    dynamic_theory atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
     for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
     and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
     and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
     and prog_eval :: "'prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
     and dyn_prog_FV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
 begin
+
+subsubsection\<open>Semantics\<close>
+text\<open>We define the semantics of regular lifted programs as follows.
+For proof simplicity, we rely on a formalization of loop which slightly deviates
+from the ``standard'' definition.
+However, below we show a correspondence to the (more standard)
+\texttt{REP} construct:
+\<close>
 
 fun full_prog_eval_int :: "nat \<Rightarrow> ('atom,'var,'prog) kat_prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
   where
@@ -32,6 +50,11 @@ fun full_prog_eval_int :: "nat \<Rightarrow> ('atom,'var,'prog) kat_prog \<Right
   | "full_prog_eval_int n (SEQ \<pi>1 \<pi>2) \<mu> \<omega> = (\<exists> \<nu> . ( full_prog_eval_int n \<pi>1 \<mu> \<nu> \<and> full_prog_eval_int n \<pi>2 \<nu> \<omega> ) )"
   | "full_prog_eval_int n (CHOICE \<pi>1 \<pi>2) \<mu> \<omega> = (full_prog_eval_int n \<pi>1 \<mu> \<omega> \<or> full_prog_eval_int n \<pi>2 \<mu> \<omega>)"
   | "full_prog_eval_int n (LOOP \<pi>) \<mu> \<omega> = (if n>0 then ((state_eval \<mu> = state_eval \<omega>) \<or> (full_prog_eval_int (n-1) (SEQ \<pi> (LOOP \<pi>)) \<mu> \<omega>)  \<or> (full_prog_eval_int (n-1) (LOOP \<pi>) \<mu> \<omega>)) else False)"
+
+text\<open>
+The non-standard definition above allows us to prove the following
+auxiliary lemmas:
+\<close>
 
 lemma full_prog_eval_int_n_one_monotone:
   "\<And> n1 n2 \<mu>1 \<omega>1 n2 . full_prog_eval_int n1 \<pi>1 \<mu>1 \<omega>1 \<Longrightarrow> n2=(n1+1) \<Longrightarrow> full_prog_eval_int n2 \<pi>1 \<mu>1 \<omega>1"
@@ -113,8 +136,96 @@ lemma full_prog_eval_int_n_combinable:
   using full_prog_eval_int_n_monotone[of n2 \<pi>2 \<mu>2 \<omega>2 "(max n1 n2)"] 
   by simp
 
+text\<open>
+We then factor out the $n$ counter for our program evaluation function:
+\<close>
+
 definition full_prog_eval :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
   where "full_prog_eval \<pi> \<mu> \<omega> = (\<exists> n . (full_prog_eval_int n \<pi> \<mu> \<omega>))"
+
+text\<open>
+We can then show a correspondence between the \texttt{LOOP} semantics
+defined above and the (syntactically defined) \texttt{REP} construct
+below:
+\<close>
+
+fun REP :: "('a,'vr,'pr) kat_prog \<Rightarrow> nat \<Rightarrow> ('a,'vr,'pr) kat_prog" where
+  "REP \<pi> (Suc n) = (\<pi> ; (REP \<pi> n))"
+| "REP \<pi> 0 = (? FOLTRUE)"
+
+lemma rep_is_kleene:
+  assumes inrep: "full_prog_eval (REP \<pi> n) \<mu> \<omega>"
+  shows "full_prog_eval (\<pi>*) \<mu> \<omega>"
+proof -
+  have "full_prog_eval (REP \<pi> n) \<mu> \<omega> \<Longrightarrow> full_prog_eval (\<pi>*) \<mu> \<omega>"
+  proof (induct n arbitrary: \<mu>)
+    case 0
+    hence "state_eval \<mu> = state_eval \<omega>"
+      using full_prog_eval_def by auto 
+    hence "full_prog_eval_int 1 (\<pi>*) \<mu> \<omega>"
+      by simp
+    thus ?case
+      using full_prog_eval_def by blast
+  next
+    case indhyp: (Suc n)
+    then obtain \<nu> where nu: "full_prog_eval \<pi> \<mu> \<nu> \<and> full_prog_eval (REP \<pi> n) \<nu> \<omega> "
+      using full_prog_eval_def by auto
+    with indhyp have "full_prog_eval \<pi> \<mu> \<nu> \<and> full_prog_eval (\<pi>*) \<nu> \<omega>"
+      by blast
+    hence "full_prog_eval (\<pi> ; (\<pi>*)) \<mu> \<omega>"
+      by (meson full_prog_eval_def full_prog_eval_int.simps(3) full_prog_eval_int_n_monotone nat_le_linear) 
+    thus ?case
+      by (metis add_eq_if diff_Suc_1 full_prog_eval_def full_prog_eval_int.simps(5) less_add_Suc1) 
+  qed
+  with inrep show ?thesis by blast
+qed
+    thm full_prog_eval_int.simps
+lemma kleene_is_rep:
+ assumes inkleene: "full_prog_eval (\<pi>*) \<mu> \<omega>"
+  shows "\<exists>n. full_prog_eval (REP \<pi> n) \<mu> \<omega>"
+proof -
+  {
+    fix n
+    have "full_prog_eval_int n (\<pi>*) \<mu> \<omega> \<Longrightarrow> ?thesis"
+    proof (induct n arbitrary: \<mu>)
+      case 0
+      then show ?case by auto
+    next
+      case indhyp: (Suc n)
+      hence "state_eval \<mu> = state_eval \<omega> \<or>
+          full_prog_eval_int n (\<pi>;(\<pi>*))\<mu> \<omega> \<or>
+          full_prog_eval_int n (\<pi>*) \<mu> \<omega>" 
+        using full_prog_eval_int.simps(5) by fastforce
+      then show ?case
+      proof (elim disjE)
+        assume "state_eval \<mu> = state_eval \<omega>"
+        thus ?case
+          by (metis REP.simps(2) dyn_eval.simps(1) fol_true_valid full_prog_eval_def full_prog_eval_int.simps(2) theory_valid_def) 
+      next
+        assume "full_prog_eval_int n (\<pi>;(\<pi>*)) \<mu> \<omega>" 
+        then obtain \<tau> where "full_prog_eval_int n \<pi> \<mu> \<tau> \<and> full_prog_eval_int n (\<pi>*) \<tau> \<omega>"
+          using full_prog_eval_int.simps(3) by blast
+        with indhyp obtain n' where "full_prog_eval \<pi> \<mu> \<tau> \<and> full_prog_eval (REP \<pi> n') \<tau> \<omega>"
+          using full_prog_eval_def by blast
+        hence "full_prog_eval (REP \<pi> (Suc n')) \<mu> \<omega>" using REP.simps
+          by (smt (z3) full_prog_eval_def full_prog_eval_int.simps(3) full_prog_eval_int_n_monotone nat_le_linear)
+        thus ?case by blast
+      next
+        assume "full_prog_eval_int n (\<pi>*) \<mu> \<omega>"
+        with indhyp show ?case by simp
+      qed
+    qed
+  }
+  with inkleene show ?thesis
+    using full_prog_eval_def by blast
+qed
+
+subsubsection\<open>Free and Bound Variables\<close>
+text\<open>
+We define the following syntactic overapproximations for free and bound
+variables:
+\<close>
+
 
 fun full_prog_fv_syn :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Rightarrow> bool"
   where
@@ -123,16 +234,6 @@ fun full_prog_fv_syn :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Righta
   | "full_prog_fv_syn (SEQ \<pi>1 \<pi>2) v = ((full_prog_fv_syn \<pi>1 v) \<or> (full_prog_fv_syn \<pi>2 v))"
   | "full_prog_fv_syn (CHOICE \<pi>1 \<pi>2) v = ((full_prog_fv_syn \<pi>1 v) \<or> (full_prog_fv_syn \<pi>2 v))"
   | "full_prog_fv_syn (LOOP \<pi>) v = (full_prog_fv_syn \<pi> v)"
-
-(*
-fun full_dyn_FV_prog :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Rightarrow> bool"
-  where
-    "full_dyn_FV_prog (KATPROG \<pi>) v = dyn_prog_FV \<pi> v"
-  | "full_dyn_FV_prog (CHECK \<phi>) v = dyn_FV  (FOL \<phi>) v"
-  | "full_dyn_FV_prog (SEQ \<pi>1 \<pi>2) v =((full_dyn_FV_prog \<pi>1 v) \<or> (full_dyn_FV_prog \<pi>2 v))"
-  | "full_dyn_FV_prog (CHOICE \<pi>1 \<pi>2) v =((full_dyn_FV_prog \<pi>1 v) \<or> (full_dyn_FV_prog \<pi>2 v))"
-  | "full_dyn_FV_prog (LOOP \<pi>) v =(full_dyn_FV_prog \<pi> v)"
-*)
 
 fun full_dyn_FV_fml :: "('atom,'var,('atom, 'var, 'prog) kat_prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool"
   where
@@ -149,6 +250,10 @@ fun full_dyn_prog_BV :: " ('prog \<Rightarrow> 'var \<Rightarrow> bool) \<Righta
   | "full_dyn_prog_BV BV (SEQ \<pi>1 \<pi>2) v =((full_dyn_prog_BV BV \<pi>1 v) \<or> (full_dyn_prog_BV BV \<pi>2 v))"
   | "full_dyn_prog_BV BV (CHOICE \<pi>1 \<pi>2) v =((full_dyn_prog_BV BV \<pi>1 v) \<or> (full_dyn_prog_BV BV \<pi>2 v))"
   | "full_dyn_prog_BV BV (LOOP \<pi>) v =(full_dyn_prog_BV BV \<pi> v)"
+
+subsubsection\<open>Dynamic Theory\<close>
+text\<open>Before proving that our lifting results in a dynamic theory,
+we first prove the following helper lemma:\<close>
 
 lemma full_prog_var_determinance_n:
  "\<forall> n \<mu> \<omega>. (\<forall>v. state_eval \<mu> v = state_eval \<omega> v) \<longrightarrow> full_prog_eval_int n \<pi> \<mu> = full_prog_eval_int n \<pi> \<omega>"
@@ -304,12 +409,9 @@ lemma full_prog_var_determinance_n:
     qed
   qed
 
-sublocale kat_dl : dynLog
+sublocale kat_dl : dynamic_theory
   "atom_eval" "atom_fv_syn" "state_eval" "full_prog_eval" "full_prog_fv_syn"
 proof
-
-  have dynLogCore_instantiated: "dynLogCore atom_eval atom_fv_syn state_eval full_prog_eval full_prog_fv_syn"
-    proof
     show "\<And>\<pi>. finite (Collect (full_prog_fv_syn \<pi>))"
     proof -
       fix \<pi>
@@ -465,7 +567,7 @@ proof
               assume "(\<forall>v. full_prog_fv_syn \<pi> v \<longrightarrow> V v) \<and> fol_states_agree_on V \<mu> \<omega> \<and> full_prog_eval_int (Suc N) (LOOP \<pi>) \<mu> \<nu>"
               then have three_possible_cases: "(state_eval \<mu> = state_eval \<omega>) \<or> full_prog_eval_int (Suc N - 1) (SEQ \<pi> (LOOP \<pi>)) \<mu> \<nu> \<or> full_prog_eval_int (Suc N - 1) (LOOP \<pi>) \<mu> \<nu>"
                 unfolding full_prog_eval_int.simps(5)[of "(Suc N)"]
-                by (meson KATDynLog.full_prog_eval_int.simps(5) KATDynLog_axioms Suc.hyps(1) le_imp_less_Suc zero_less_diff)
+                by (meson regular_lifting.full_prog_eval_int.simps(5) regular_lifting_axioms Suc.hyps(1) le_imp_less_Suc zero_less_diff)
               
               then show "\<exists>\<upsilon>. full_prog_eval_int (Suc N) (LOOP \<pi>) \<omega> \<upsilon> \<and> fol_states_agree_on V \<nu> \<upsilon>"
                 unfolding full_prog_eval_int.simps(5)[of "(Suc N)"]
@@ -576,27 +678,6 @@ proof
 qed
 qed
 
-  show "\<And>\<pi>. finite (Collect (full_prog_fv_syn \<pi>))"
-    using dynLogCore_instantiated
-    using dynLogCore.prog_fv_finite[of "atom_eval" "atom_fv_syn" "state_eval" "full_prog_eval" "full_prog_fv_syn"]
-    by fastforce
-  
-  show "\<And>\<pi> V \<mu> \<omega> \<nu>.
-         (\<forall>v. full_prog_fv_syn \<pi> v \<longrightarrow> V v) \<and> fol_states_agree_on V \<mu> \<omega> \<and> full_prog_eval \<pi> \<mu> \<nu> \<longrightarrow>
-         (\<exists>\<upsilon>. full_prog_eval \<pi> \<omega> \<upsilon> \<and> fol_states_agree_on V \<nu> \<upsilon>)"
-  using dynLogCore_instantiated
-  using dynLogCore.prog_fv_overapprox[of "atom_eval" "atom_fv_syn" "state_eval" "full_prog_eval" "full_prog_fv_syn"]
-  by blast
-
-  show "\<forall>\<pi> \<mu> \<omega>. (\<forall>v. state_eval \<mu> v = state_eval \<omega> v) \<longrightarrow> full_prog_eval \<pi> \<mu> = full_prog_eval \<pi> \<omega>"
-    using dynLogCore_instantiated
-    using dynLogCore.prog_var_determinance
-    by blast
-qed
-
-(*sublocale kat_dl : dynLog
-    "atom_eval" "atom_fv_syn" "state_eval" "full_prog_eval" "full_prog_fv_syn"
-  by unfold_locales*)
 
 lemma BV_overapprox:
   assumes "\<And> \<pi> v . dyn_prog_bv_sem \<pi> v \<Longrightarrow> BV \<pi> v"
@@ -699,6 +780,100 @@ next
       by blast
   qed
 qed
+
+lemma loop_concat:
+  assumes "full_prog_eval (\<pi>1 *) \<mu> \<sigma>"
+      and "full_prog_eval (\<pi>1) \<sigma> \<nu>"
+  shows "full_prog_eval (\<pi>1* ) \<mu> \<nu>"
+proof -
+
+  obtain N2 where N2_cond: "full_prog_eval_int N2 (\<pi>1 ) \<sigma> \<nu> \<and> N2 \<ge> 2" using assms
+    unfolding full_prog_eval_def
+    using full_prog_eval_int_n_monotone nat_le_linear by blast
+  obtain N1 where N1_cond: "full_prog_eval_int N1 (\<pi>1* ) \<mu> \<sigma>" using assms
+    unfolding full_prog_eval_def by blast
+
+  then have "N1 \<ge> 1"
+    using neq0_conv by fastforce
+
+  then have "\<forall> s1 s2 s3 . full_prog_eval_int N1 (\<pi>1* ) s1 s2 \<and> full_prog_eval_int N2 (\<pi>1 ) s2 s3 \<longrightarrow> full_prog_eval_int (N1+N2) (\<pi>1* ) s1 s3"
+  proof (induct N1)
+    case 0
+    then show ?case
+      by simp
+  next
+    case (Suc N1)
+    then show ?case
+    proof (intro allI, intro impI)
+      fix s1 s2 s3
+
+      have ind_hyp: "\<forall>s1 s2 s3.
+           full_prog_eval_int N1 (\<pi>1*) s1 s2 \<and>
+           full_prog_eval_int N2 \<pi>1 s2 s3 \<longrightarrow>
+           full_prog_eval_int (N1 + N2) (\<pi>1*) s1 s3"
+        using Suc.hyps by auto
+
+      have proof_details: "(state_eval s1 = state_eval s2 \<or>
+        full_prog_eval_int (Suc N1 - 1) (\<pi>1;(\<pi>1* )) s1 s2 \<or>
+        full_prog_eval_int (Suc N1 - 1) (\<pi>1*) s1 s2) \<and>
+        full_prog_eval_int N2 \<pi>1 s2 s3
+        \<Longrightarrow> full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
+      proof (elim conjE,elim disjE)
+        show "full_prog_eval_int N2 \<pi>1 s2 s3 \<Longrightarrow>
+                state_eval s1 = state_eval s2 \<Longrightarrow>
+                full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
+        proof -
+          assume assm1: "full_prog_eval_int N2 \<pi>1 s2 s3"
+          assume assm2: "state_eval s1 = state_eval s2"
+          then have "(\<forall>v. state_eval s1 v = state_eval s2 v)"
+            by force
+          then have "full_prog_eval_int N2 \<pi>1 s1 s3"
+            using assm1
+            using full_prog_var_determinance_n[of \<pi>1]
+            unfolding full_prog_eval_def
+            apply (elim allE[where x=N2])
+            apply (erule allE[where x="s1"])
+            apply (erule allE[where x="s2"])
+            by simp
+          thus "full_prog_eval_int (Suc N1 + N2) (\<pi>1* ) s1 s3"
+            unfolding full_prog_eval_int.simps[of "(Suc N1 + N2)"]
+            unfolding full_prog_eval_int.simps[of "(Suc N1 + N2 -1)"]
+            using full_prog_eval_int_n_monotone[of N2 \<pi>1 s1 s3 "(Suc N1 + N2 - 1)"]
+            using assm2 N2_cond
+            by (metis Suc_1 Suc_le_D add_Suc diff_Suc_1 gr0_conv_Suc le_add2)
+        qed
+
+        show "full_prog_eval_int N2 \<pi>1 s2 s3 \<Longrightarrow>
+                full_prog_eval_int (Suc N1 - 1) (\<pi>1*) s1 s2 \<Longrightarrow>
+                full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
+          using ind_hyp
+          by (metis Suc_n_not_le_n add_le_mono1 diff_Suc_1 full_prog_eval_int_n_monotone linorder_linear)
+
+        show "full_prog_eval_int N2 \<pi>1 s2 s3 \<Longrightarrow>
+          full_prog_eval_int (Suc N1 - 1) (\<pi>1;(\<pi>1* )) s1 s2 \<Longrightarrow>
+          full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
+          using ind_hyp
+          by (smt (verit, ccfv_SIG) add_Suc diff_Suc_1 full_prog_eval_int.simps(3) full_prog_eval_int.simps(5) full_prog_eval_int_n_monotone nat_le_iff_add zero_less_Suc)
+      
+      qed
+
+      assume "full_prog_eval_int (Suc N1) (\<pi>1*) s1 s2 \<and>
+       full_prog_eval_int N2 \<pi>1 s2 s3"
+      thus "full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
+        unfolding full_prog_eval_int.simps[of "(Suc N1)"]
+        using proof_details
+        by simp
+    qed
+  qed
+  thus "full_prog_eval (\<pi>1*) \<mu> \<nu>"
+    using assms
+    using N1_cond N2_cond full_prog_eval_def by blast
+qed
+
+subsubsection\<open>Proof Rules\<close>
+text\<open>
+For the program constructs introduced by the regular lifting, we introduce
+the following axioms and proof rules:\<close>
 
 lemma dyn_axiom_test:
   fixes v :: "'var"
@@ -958,95 +1133,6 @@ proof -
     by simp
 qed
 
-lemma loop_concat:
-  assumes "full_prog_eval (\<pi>1 *) \<mu> \<sigma>"
-      and "full_prog_eval (\<pi>1) \<sigma> \<nu>"
-  shows "full_prog_eval (\<pi>1* ) \<mu> \<nu>"
-proof -
-
-  obtain N2 where N2_cond: "full_prog_eval_int N2 (\<pi>1 ) \<sigma> \<nu> \<and> N2 \<ge> 2" using assms
-    unfolding full_prog_eval_def
-    using full_prog_eval_int_n_monotone nat_le_linear by blast
-  obtain N1 where N1_cond: "full_prog_eval_int N1 (\<pi>1* ) \<mu> \<sigma>" using assms
-    unfolding full_prog_eval_def by blast
-
-  then have "N1 \<ge> 1"
-    using neq0_conv by fastforce
-
-  then have "\<forall> s1 s2 s3 . full_prog_eval_int N1 (\<pi>1* ) s1 s2 \<and> full_prog_eval_int N2 (\<pi>1 ) s2 s3 \<longrightarrow> full_prog_eval_int (N1+N2) (\<pi>1* ) s1 s3"
-  proof (induct N1)
-    case 0
-    then show ?case
-      by simp
-  next
-    case (Suc N1)
-    then show ?case
-    proof (intro allI, intro impI)
-      fix s1 s2 s3
-
-      have ind_hyp: "\<forall>s1 s2 s3.
-           full_prog_eval_int N1 (\<pi>1*) s1 s2 \<and>
-           full_prog_eval_int N2 \<pi>1 s2 s3 \<longrightarrow>
-           full_prog_eval_int (N1 + N2) (\<pi>1*) s1 s3"
-        using Suc.hyps by auto
-
-      have proof_details: "(state_eval s1 = state_eval s2 \<or>
-        full_prog_eval_int (Suc N1 - 1) (\<pi>1;(\<pi>1* )) s1 s2 \<or>
-        full_prog_eval_int (Suc N1 - 1) (\<pi>1*) s1 s2) \<and>
-        full_prog_eval_int N2 \<pi>1 s2 s3
-        \<Longrightarrow> full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
-      proof (elim conjE,elim disjE)
-        show "full_prog_eval_int N2 \<pi>1 s2 s3 \<Longrightarrow>
-                state_eval s1 = state_eval s2 \<Longrightarrow>
-                full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
-        proof -
-          assume assm1: "full_prog_eval_int N2 \<pi>1 s2 s3"
-          assume assm2: "state_eval s1 = state_eval s2"
-          then have "(\<forall>v. state_eval s1 v = state_eval s2 v)"
-            by force
-          then have "full_prog_eval_int N2 \<pi>1 s1 s3"
-            using assm1
-            using full_prog_var_determinance_n[of \<pi>1]
-            unfolding full_prog_eval_def
-            apply (elim allE[where x=N2])
-            apply (erule allE[where x="s1"])
-            apply (erule allE[where x="s2"])
-            by simp
-          thus "full_prog_eval_int (Suc N1 + N2) (\<pi>1* ) s1 s3"
-            unfolding full_prog_eval_int.simps[of "(Suc N1 + N2)"]
-            unfolding full_prog_eval_int.simps[of "(Suc N1 + N2 -1)"]
-            using full_prog_eval_int_n_monotone[of N2 \<pi>1 s1 s3 "(Suc N1 + N2 - 1)"]
-            using assm2 N2_cond
-            by (metis Suc_1 Suc_le_D add_Suc diff_Suc_1 gr0_conv_Suc le_add2)
-        qed
-
-        show "full_prog_eval_int N2 \<pi>1 s2 s3 \<Longrightarrow>
-                full_prog_eval_int (Suc N1 - 1) (\<pi>1*) s1 s2 \<Longrightarrow>
-                full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
-          using ind_hyp
-          by (metis Suc_n_not_le_n add_le_mono1 diff_Suc_1 full_prog_eval_int_n_monotone linorder_linear)
-
-        show "full_prog_eval_int N2 \<pi>1 s2 s3 \<Longrightarrow>
-          full_prog_eval_int (Suc N1 - 1) (\<pi>1;(\<pi>1* )) s1 s2 \<Longrightarrow>
-          full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
-          using ind_hyp
-          by (smt (verit, ccfv_SIG) add_Suc diff_Suc_1 full_prog_eval_int.simps(3) full_prog_eval_int.simps(5) full_prog_eval_int_n_monotone nat_le_iff_add zero_less_Suc)
-      
-      qed
-
-      assume "full_prog_eval_int (Suc N1) (\<pi>1*) s1 s2 \<and>
-       full_prog_eval_int N2 \<pi>1 s2 s3"
-      thus "full_prog_eval_int (Suc N1 + N2) (\<pi>1*) s1 s3"
-        unfolding full_prog_eval_int.simps[of "(Suc N1)"]
-        using proof_details
-        by simp
-    qed
-  qed
-  thus "full_prog_eval (\<pi>1*) \<mu> \<nu>"
-    using assms
-    using N1_cond N2_cond full_prog_eval_def by blast
-qed
-
 
 lemma dyn_axiom_I:
   "\<Turnstile>[kat_dl.dyn_eval] ((\<lbrakk>((\<pi>1)*)\<rbrakk>(\<phi> \<Rrightarrow> \<lbrakk>\<pi>1\<rbrakk>\<phi>)) \<Rrightarrow> (\<phi> \<Rrightarrow> \<lbrakk>((\<pi>1)*)\<rbrakk>\<phi>))"
@@ -1169,6 +1255,11 @@ proof -
     by blast
 qed
 
+text\<open>
+We also introduce a proof rule allowing us to reuse proof results from the
+underlying dynamic theory:
+\<close>
+
 fun translate :: "('atom, 'var, 'prog) dyn_formula \<Rightarrow>('atom, 'var, ('atom, 'var, 'prog) kat_prog) dyn_formula"
   where
       "translate (FOL \<phi>) = (FOL \<phi>)"
@@ -1232,13 +1323,19 @@ proof -
     by blast
 qed
 
+paragraph\<open>Auxiliary lemmas\<close>
+text\<open>
+Additionally, we prove some auxiliary lemmas on rewriting the \texttt{dyn\_eval}
+function for regular programms:
+\<close>
+
 lemma dl_seq: "kat_dl.dyn_eval (\<lbrakk> (\<alpha> ; \<beta>) \<rbrakk> \<phi>) \<mu> = kat_dl.dyn_eval (\<lbrakk>\<alpha>\<rbrakk>(\<lbrakk>\<beta>\<rbrakk>\<phi>)) \<mu>"
 proof -
   have "kat_dl.dyn_eval (\<lbrakk> (\<alpha>;\<beta>) \<rbrakk> \<phi>) \<mu> =
          (\<forall>s. full_prog_eval (\<alpha>;\<beta>) \<mu> s \<longrightarrow> kat_dl.dyn_eval \<phi> s)"
     by simp
   also have "... = (\<forall>s. (\<exists>t. full_prog_eval \<alpha> \<mu> t \<and> full_prog_eval \<beta> t s) \<longrightarrow> kat_dl.dyn_eval \<phi> s)"
-    by (meson KATDynLog.full_prog_eval_int.simps(3) KATDynLog_axioms full_prog_eval_def full_prog_eval_int_n_monotone le_add2 nat_le_iff_add)
+    by (meson regular_lifting.full_prog_eval_int.simps(3) regular_lifting_axioms full_prog_eval_def full_prog_eval_int_n_monotone le_add2 nat_le_iff_add)
   also have "... = (\<forall>t. full_prog_eval \<alpha> \<mu> t \<longrightarrow> (\<forall>s. full_prog_eval \<beta> t s \<longrightarrow> kat_dl.dyn_eval \<phi> s))"
     by blast
   also have "... = kat_dl.dyn_eval (\<lbrakk> \<alpha> \<rbrakk> \<lbrakk> \<beta> \<rbrakk> \<phi>) \<mu>"
@@ -1250,77 +1347,6 @@ lemma dia_is_ex:
   "kat_dl.dyn_eval (\<langle> \<pi> \<rangle> \<phi>) \<mu> = (\<exists>\<omega>. full_prog_eval \<pi> \<mu> \<omega> \<and> kat_dl.dyn_eval \<phi> \<omega>)"
   using kat_dl.DIAMOND_def by auto
 
-
-fun REP :: "('a,'vr,'pr) kat_prog \<Rightarrow> nat \<Rightarrow> ('a,'vr,'pr) kat_prog" where
-  "REP \<pi> (Suc n) = (\<pi> ; (REP \<pi> n))"
-| "REP \<pi> 0 = (? FOLTRUE)"
-
-lemma rep_is_kleene:
-  assumes inrep: "full_prog_eval (REP \<pi> n) \<mu> \<omega>"
-  shows "full_prog_eval (\<pi>*) \<mu> \<omega>"
-proof -
-  have "full_prog_eval (REP \<pi> n) \<mu> \<omega> \<Longrightarrow> full_prog_eval (\<pi>*) \<mu> \<omega>"
-  proof (induct n arbitrary: \<mu>)
-    case 0
-    hence "state_eval \<mu> = state_eval \<omega>"
-      using full_prog_eval_def by auto 
-    hence "full_prog_eval_int 1 (\<pi>*) \<mu> \<omega>"
-      by simp
-    thus ?case
-      using full_prog_eval_def by blast
-  next
-    case indhyp: (Suc n)
-    then obtain \<nu> where nu: "full_prog_eval \<pi> \<mu> \<nu> \<and> full_prog_eval (REP \<pi> n) \<nu> \<omega> "
-      using full_prog_eval_def by auto
-    with indhyp have "full_prog_eval \<pi> \<mu> \<nu> \<and> full_prog_eval (\<pi>*) \<nu> \<omega>"
-      by blast
-    hence "full_prog_eval (\<pi> ; (\<pi>*)) \<mu> \<omega>"
-      by (meson full_prog_eval_def full_prog_eval_int.simps(3) full_prog_eval_int_n_monotone nat_le_linear) 
-    thus ?case
-      by (metis add_eq_if diff_Suc_1 full_prog_eval_def full_prog_eval_int.simps(5) less_add_Suc1) 
-  qed
-  with inrep show ?thesis by blast
-qed
-    thm full_prog_eval_int.simps
-lemma kleene_is_rep:
- assumes inkleene: "full_prog_eval (\<pi>*) \<mu> \<omega>"
-  shows "\<exists>n. full_prog_eval (REP \<pi> n) \<mu> \<omega>"
-proof -
-  {
-    fix n
-    have "full_prog_eval_int n (\<pi>*) \<mu> \<omega> \<Longrightarrow> ?thesis"
-    proof (induct n arbitrary: \<mu>)
-      case 0
-      then show ?case by auto
-    next
-      case indhyp: (Suc n)
-      hence "state_eval \<mu> = state_eval \<omega> \<or>
-          full_prog_eval_int n (\<pi>;(\<pi>*))\<mu> \<omega> \<or>
-          full_prog_eval_int n (\<pi>*) \<mu> \<omega>" 
-        using full_prog_eval_int.simps(5) by fastforce
-      then show ?case
-      proof (elim disjE)
-        assume "state_eval \<mu> = state_eval \<omega>"
-        thus ?case
-          by (metis REP.simps(2) dyn_eval.simps(1) fol_true_valid full_prog_eval_def full_prog_eval_int.simps(2) theory_valid_def) 
-      next
-        assume "full_prog_eval_int n (\<pi>;(\<pi>*)) \<mu> \<omega>" 
-        then obtain \<tau> where "full_prog_eval_int n \<pi> \<mu> \<tau> \<and> full_prog_eval_int n (\<pi>*) \<tau> \<omega>"
-          using full_prog_eval_int.simps(3) by blast
-        with indhyp obtain n' where "full_prog_eval \<pi> \<mu> \<tau> \<and> full_prog_eval (REP \<pi> n') \<tau> \<omega>"
-          using full_prog_eval_def by blast
-        hence "full_prog_eval (REP \<pi> (Suc n')) \<mu> \<omega>" using REP.simps
-          by (smt (z3) full_prog_eval_def full_prog_eval_int.simps(3) full_prog_eval_int_n_monotone nat_le_linear)
-        thus ?case by blast
-      next
-        assume "full_prog_eval_int n (\<pi>*) \<mu> \<omega>"
-        with indhyp show ?case by simp
-      qed
-    qed
-  }
-  with inkleene show ?thesis
-    using full_prog_eval_def by blast
-qed
 
 lemma kleene_rep_rewrite:
   "(full_prog_eval (\<pi>*) \<mu> \<omega>) = (\<exists>n. full_prog_eval (REP \<pi> n) \<mu> \<omega>)"

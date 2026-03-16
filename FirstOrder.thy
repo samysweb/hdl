@@ -1,9 +1,12 @@
+section \<open> First-Order Logic \<close>
+text\<open>
+\label{sec:first-order}
+\<close>
 theory FirstOrder
   imports
     Main
 
 begin
-section \<open> First-Order Logic \<close>
 subsection \<open> General Definitions \<close>
 text \<open>
 We begin with some general definitions which are not bound to the First-Order Logic locale defined below.
@@ -43,7 +46,7 @@ definition OR :: "('a, 'vr) fol_formula \<Rightarrow> ('a, 'vr) fol_formula \<Ri
 definition FOLTRUE :: "('a, 'vr) fol_formula"
   where[simp]: "FOLTRUE = (undefined or \<rceil>undefined)"
 
-subsubsection \<open> Semantics \<close>
+subsubsection \<open> Semantics Foundations \<close>
 text\<open>
 First order formulas are evaluated w.r.t. states.
 We do not fix states to, e.g., mappings from variables to values,
@@ -75,13 +78,14 @@ definition fol_states_agree_on_gen :: "(('state \<Rightarrow> 'var \<Rightarrow>
 
 definition fol_equal_everywhere_but_gen :: "('state \<Rightarrow> 'var \<Rightarrow> 'val) \<Rightarrow> 'var \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
     where [simp]: "fol_equal_everywhere_but_gen eval v \<mu> \<omega> = fol_states_agree_on_gen eval (\<lambda> w. w \<noteq> v) \<mu> \<omega>"
+
 subsection \<open> The First-Order Logic Locale \<close>
 text \<open>
 This locale captures a First-Order logic that is evaluated w.r.t. states.
 Atoms are given via the type \texttt{'atom} and evaluated using the provided \texttt{atom\_eval}
 function which takes an atom and a state of type \texttt{'state} and returns a truth value.
 We also require a function \texttt{state\_eval} which evaluates a variable w.r.t. a given state.
-Some First-Order Logic properties (e.g. the coincidence lemma) require us that the truth value of
+Some First-Order Logic properties (e.g. the coincidence lemma) require that the truth value of
 atoms only depends on a finite set of variables.
 For example, we cannot have an atom which is true iff an infinite number of variables has value 1
 in a given state.
@@ -102,6 +106,11 @@ locale folCore =
               (v \<in> V \<longrightarrow> ((state_eval \<nu>) v) = ((state_eval \<mu>) v)) \<and>
               (v \<notin> V \<longrightarrow> ((state_eval \<nu>) v) = ((state_eval \<omega>) v))))))"
 begin
+
+text\<open>
+We now define a few additional constructs that help us to reason about differences and similarities
+between states.
+\<close>
 
   definition fol_state_var_diff_set :: "'state \<Rightarrow> 'state \<Rightarrow> 'var set"
     where "fol_state_var_diff_set \<mu> \<omega> = Collect (\<lambda> v :: 'var . (state_eval \<mu>) v \<noteq> (state_eval \<omega>) v)"
@@ -149,7 +158,8 @@ begin
 
   subsubsection \<open> Semantics \<close>
   text \<open>
-    We define the evaluation of first-order formulas w.r.t. states, define validity and prove the validity of our truth representation.
+    We define the evaluation of first-order formulas w.r.t. states,
+    define validity and prove the validity of our truth representation.
   \<close>
 
   fun fol_eval :: "('atom,'var) fol_formula \<Rightarrow> 'state \<Rightarrow> bool"
@@ -166,7 +176,7 @@ begin
   lemma fol_true_valid :"\<Turnstile>[fol_eval] FOLTRUE" 
     by simp
 
-  subsection \<open>  Free Variables (Semantic Definitions) \<close>
+  subsubsection \<open>  Free Variables (Semantic Definitions) \<close>
 
   text \<open>
     We now turn to the question which variables influence the evaluation of a formula.
@@ -399,10 +409,11 @@ qed
 
 paragraph\<open>Results on Semantically Free Variables\<close>
 text \<open>
-  With coincidence proven for syntactically free variables, we can now move on to the stronger result:
+  Based on the coincidence property for syntactically free variables,
+  we can prove a stronger result:
   Coincidence w.r.t. semantically free variables which are a subset of the syntactically free variables.
-  This result requires the former results, which provides us with the knowledge that only a finite number
-  of variables are relevant to a given formula.
+  This result requires the former result to ensure that only a finite number of variables
+  are relevant to a given formula.
 \<close>
 
   lemma fol_fv_sem_coincidence:
@@ -567,12 +578,12 @@ text \<open>
         by (metis (mono_tags, opaque_lifting) folCore.fol_fv_syn_mirror_state_def folCore.fol_states_agree_on_def folCore_axioms fol_fv_syn_coincidence)
     qed
 
-(*text \<open>
+text \<open>
 Next, we show that the set of semantically free variables is indeed the smallest set for which
 coincidence holds.
 Note, that smallest here is in the sense of \emph{cardinality} and not just in the sense of 
 a subset relation.
-\<close>*)
+\<close>
 
 lemma fol_fv_sem_coincidence_smallest:
     fixes FVTest :: "('atom, 'var) fol_formula \<Rightarrow> 'var \<Rightarrow> bool"
@@ -635,7 +646,7 @@ lemma fol_fv_sem_coincidence_smallest:
       by auto
   qed
 
-  subsection\<open>Elementary Axioms\<close>
+  subsubsection\<open>Elementary Axioms\<close>
 
 text \<open>
 With these results out of the way, we can now move on to proving the validity of a number of Hilbert axioms
@@ -716,7 +727,9 @@ lemma fol_hilbert_mp:
   unfolding fol_valid_def
   by force
 
-(* Boolean Algebra *)
+text\<open>
+Additionally we prove some boolean algebra results.
+\<close>
 
 lemma "\<And>a b c. fol_eval ((a foland b) foland c) = fol_eval (a foland (b foland c))"
   unfolding fol_eval.simps

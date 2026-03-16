@@ -1,3 +1,30 @@
+section\<open>Instantiations\<close>
+text\<open>
+We now demonstrate the utility of our theory, by providing concrete instantiations.
+In addition to the two instantiations presented here,
+we also have an instantiation for the AFP formalization of
+differential dynamic logic~\cite{Differential_Dynamic_Logic-AFP}.
+For sake of modularity of this Isabelle session,
+we extracted this instantiation to its own session.
+\<close>
+subsection\<open>Propositional Dynamic Logic\<close>
+text\<open>
+\label{subsec:inst:pdl}
+We formalize a simple version of propositional dynamic logic here,
+which we prove to be an instantation of a dynamic theory.
+Propositional Dynamic Logic can be recovered as an instance
+of a dynamic theory by restricting the set of first-order variables
+to a \emph{single} variable whose valuation is a \emph{function} from
+atomic propositions to Booleans.
+
+A state then consists of a single such valuation function,
+and atomic propositions are evaluated by projecting out of this valuation.
+Since the variable space is a singleton,
+the free-variable and bound-variable conditions required by the
+generic dynamic logic framework are trivially satisfied,
+and the resulting instantiation inherits the full dynamic
+logic infrastructure and proof rules.
+\<close>
 theory PDL
   imports
     Main
@@ -16,13 +43,8 @@ type_synonym 'atom pdl_state = "(pdl_var \<Rightarrow> ('atom \<Rightarrow> bool
 fun pdl_atom_eval :: "'atom \<Rightarrow> ('atom pdl_state) \<Rightarrow> bool"
   where "pdl_atom_eval a \<omega> = ((\<omega> singleton_var) a)"
 
-(* Trivial of course... *)
-(* Should also be possible to make this False?*)
 fun pdl_fv_syn :: "'atom \<Rightarrow> pdl_var \<Rightarrow> bool"
   where "pdl_fv_syn a singleton_var = True"
-(*interpretation pdlDLCore
-  : dynLogCore
-    "pdl_atom_eval" "pdl_prog_eval"*)
 
 definition state_id :: "'atom pdl_state \<Rightarrow> 'atom pdl_state"
   where [simp]: "state_id = id"
@@ -71,7 +93,7 @@ definition pdl_prog_bv_syn :: "'atom pdl_prog \<Rightarrow> pdl_var \<Rightarrow
 
 
 
-interpretation pdlDL : dynLogCore
+interpretation pdlDLFull : dynamic_theory
     "pdl_atom_eval" "pdl_fv_syn" "state_id"
     "(pdl_prog_eval I)" "pdl_prog_fv_syn"
 proof
@@ -106,20 +128,11 @@ proof
     by presburger
 qed
 
-interpretation pdlDLFull : dynLog
-    "pdl_atom_eval" "pdl_fv_syn" "state_id"
-    "pdl_prog_eval I" "pdl_prog_fv_syn" (*"pdl_prog_bv_syn"*)
-  by standard
-(*  show "\<And>\<pi> v. pdlDL.dyn_prog_bv_sem \<pi> v \<Longrightarrow> pdl_prog_bv_syn \<pi> v"
-    unfolding pdl_prog_bv_syn_def
-    by simp
-qed*)
-
 interpretation regular_pdl :
-  KATDynLog "pdl_atom_eval" "pdl_fv_syn" "state_id"
+  regular_lifting "pdl_atom_eval" "pdl_fv_syn" "state_id"
     "pdl_prog_eval I" "pdl_prog_fv_syn"
-  unfolding KATDynLog_def
-    using pdlDLFull.dynLog_axioms
+  unfolding regular_lifting_def
+    using pdlDLFull.dynamic_theory_axioms
     by blast
 
 interpretation regular_pdl_kat :

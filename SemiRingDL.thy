@@ -1,3 +1,9 @@
+subsubsection\<open>Dynamic Theory\<close>
+text\<open>
+We then define the dynamic theory which manipulates
+variables with ordered semi-ring values.
+\<close>
+
 theory SemiRingDL
   imports
     Main
@@ -27,8 +33,8 @@ fun semiring_prog_fv :: "('semiringfol_val :: ordered_semiring) semiring_prog \<
 fun semiring_prog_bv :: "('semiringfol_val :: ordered_semiring) semiring_prog \<Rightarrow> semiringfol_var \<Rightarrow> bool"
   where "(semiring_prog_bv (ASSIGN v t) w) = (v=w)"
 
-interpretation semiring_dl_core :
-  dynLogCore semiringfol_AtomEval semiringfol_AtomFVSyn state_id semiring_prog_eval semiring_prog_fv
+interpretation semiring_dl :
+  dynamic_theory semiringfol_AtomEval semiringfol_AtomFVSyn state_id semiring_prog_eval semiring_prog_fv
 proof
  show "\<And>\<pi>. finite (Collect (semiring_prog_fv \<pi>))"
     by (metis Collect_mono_iff rev_finite_subset semiring_folCore.fv_finite semiring_prog.exhaust semiring_prog_fv.simps semiringfol_AtomFVSyn.simps(2))
@@ -73,19 +79,23 @@ qed
 qed
 
 interpretation semiring_dl_havoc :
-  HavocDynLog "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_prog_eval semiring_prog_fv
+  havoc_lifting "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_prog_eval semiring_prog_fv
   by standard
 
 declare [[coercion "HPROG ::
     'a semiring_prog \<Rightarrow>
     ('a semiringfol_atom, char list, 'a semiring_prog) havoc_prog"]]
 
+text\<open>
+With the definitions above we can then lift the dynamic theory to the full
+regular closure:
+\<close>
 
 interpretation semiring_dl_full :
-  KATDynLog "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV
-  using KATDynLog_def semiring_dl_havoc.havoc_dl.dynLog_axioms by blast
+  regular_lifting "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV
+  using regular_lifting_def semiring_dl_havoc.havoc_dl.dynamic_theory_axioms by blast
 
-thm semiring_dl_full.kat_dl.dynLog_axioms
+thm semiring_dl_full.kat_dl.dynamic_theory_axioms
 
 declare [[coercion "KPROG :: 
     ('a semiringfol_atom, char list,
@@ -95,6 +105,12 @@ declare [[coercion "KPROG ::
      'a semiring_prog) havoc_prog) kat_prog"]]
 
 thm semiring_dl_full.dyn_axiom_I
+
+paragraph\<open>Inductive Expressivity for Natural Numbers\<close>
+text\<open>
+If we restrict valuations to natural numbers, we can prove
+that the resulting dynamic theory is inductively expressive.
+\<close>
 
 definition Varn :: "semiringfol_var \<Rightarrow> (nat) semiringfol_term"
   where "Varn v = (Var v)"
@@ -115,7 +131,7 @@ fun positive_relation :: "char list \<Rightarrow> (nat semiringfol_atom, char li
   where "positive_relation v = (ATOMn (Less (Const 0) (Varn v)))"
 
 interpretation semiring_dl_full_nat:
-  NatKATDynLog "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV "val2nat" "(\<lambda> v . True)" "plus_one_relation" "eq_relation" "positive_relation"
+  nat_regular_lifting "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV "val2nat" "(\<lambda> v . True)" "plus_one_relation" "eq_relation" "positive_relation"
 proof
 
     show "\<forall>v. True \<longrightarrow> is_nat_assignable state_id val2nat v"
@@ -203,6 +219,11 @@ proof
     qed
   qed
 
+paragraph\<open>Inductive Expressivity for Integers\<close>
+text\<open>
+Similarly, we can prove inductive expressivity for integers.
+\<close>
+
 definition VarI :: "semiringfol_var \<Rightarrow> (int) semiringfol_term"
   where "VarI v = (Var v)"
 
@@ -227,7 +248,7 @@ fun positive_relationI :: "char list \<Rightarrow> (int semiringfol_atom, char l
   where "positive_relationI v = (ATOMI (Less (Const 0) (VarI v)))"
 
 interpretation semiring_dl_full_nat_int:
-  NatKATDynLog "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV "val2natI" "(\<lambda> v . True)" "plus_one_relationI" "eq_relationI" "positive_relationI"
+  nat_regular_lifting "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV "val2natI" "(\<lambda> v . True)" "plus_one_relationI" "eq_relationI" "positive_relationI"
 proof
 
     show "\<forall>v. True \<longrightarrow> is_nat_assignable state_id val2natI v"
@@ -319,29 +340,5 @@ interpretation kleene_dyn_log:
   apply standard
     unfolding state_id_def unfolding id_def
   by presburger
-
-(*lemma SemiRingDL_axiom_assign:
-  fixes x :: "semiringfol_var"
-    and t :: "('semiringfol_val :: ordered_semiring) semiringfol_term"
-    and \<phi> :: " ('semiringfol_val semiringfol_atom, semiringfol_var,
-                 ('semiringfol_val semiringfol_atom, semiringfol_var,
-                  ('semiringfol_val semiringfol_atom, semiringfol_var, 'semiringfol_val semiring_prog) havoc_prog) kat_prog) dyn_formula"
-  assumes "\<not> semiring_dl_full.kat_dl.dyn_FV \<phi> v"
-  assumes "\<Turnstile>[semiring_dl_full.kat_dl.dyn_eval] (( \<bbbA> v . ((FOL (ATOM (Eq (Var v) t))) \<Rrightarrow> ( ( \<bbbA> x . ((FOL (ATOM (Eq (Var v) (Var x))))  \<Rrightarrow> \<phi> ))))))"
-  shows "\<Turnstile>[semiring_dl_full.kat_dl.dyn_eval] (\<lbrakk> (KATPROG (HPROG (x := t) )) \<rbrakk> \<phi>)"
-  using assms
-  unfolding theory_valid_def
-  unfolding semiring_dl_full.kat_dl.IMP_def
-  unfolding semiring_dl_full.kat_dl.dyn_eval.simps
-  unfolding semiring_folCore.fol_eval.simps
-  unfolding semiringfol_AtomEval.simps
-  unfolding semiringfol_TermEval.simps
-  unfolding semiring_dl_full.full_prog_eval_def
-  unfolding semiring_dl_full.full_prog_eval_int.simps
-  unfolding semiring_dl_havoc.full_prog_eval.simps
-  unfolding semiring_prog_eval.simps
-  apply simp
-  *)
-  (* TODO *)
 
 end

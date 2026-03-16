@@ -4,14 +4,26 @@ theory NatKATDynamicLogic
     "KATDynamicLogic"
 begin
 
+subsubsection\<open>Inductive Expressivity\<close>
+text\<open>
+\label{subsubsec:lifting:nat-regular}
+The proof rules established so far cannot reason about loops inside a
+diamond modality.
+To this end, we propose an additional proof rule which is formalized in
+this file.
+In contrast to the previously established proof rules, this axiom requires
+additional assumptions on the underlying theory.
+We formalize these assumptions in the locale below:
+\<close>
+
 definition is_nat_assignable :: "('st => 'vr => 'vl) => ('vl => nat) \<Rightarrow> 'vr \<Rightarrow> bool"
   where "is_nat_assignable eval val2nat v = (\<forall> n . (\<exists> \<mu> . (val2nat (eval \<mu> v)) = n ) )"
 
 definition nat_assignable_vars :: "('st => 'vr => 'vl) => ('vl => nat) \<Rightarrow> 'vr set"
   where "nat_assignable_vars eval val2nat = (Collect (is_nat_assignable eval val2nat))"
 
-locale NatKATDynLog =
-    KATDynLog atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
+locale nat_regular_lifting =
+    regular_lifting atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
     for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
     and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
     and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
@@ -58,6 +70,11 @@ definition holds_for_n :: "('atom, 'var, ('atom, 'var, 'prog) kat_prog) dyn_form
       fol_equal_everywhere_but v \<mu> \<omega> \<and> (N = val2nat (state_eval \<omega> v)) \<and>
        (kat_dl.dyn_eval \<phi> \<omega>)
   ))"
+
+text\<open>
+Under the assumptions formalized above, we can then prove the validity
+of the following proof rule:
+\<close>
 
 lemma dyn_axiom_C:
   fixes \<phi> :: "('atom, 'var, ('atom, 'var, 'prog) kat_prog) dyn_formula"

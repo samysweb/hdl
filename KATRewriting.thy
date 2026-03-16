@@ -1,3 +1,22 @@
+subsection\<open>KAT Reasoning\<close>
+text\<open>
+\label{subsec:kat-reasoning}
+Using the previously introduced notions of refinement and program equivalence,
+we now show that a given regularly lifted dynamic theory is amenable to
+reasoning via Kleene Algebra with Tests.
+To this end, we prove the KAT rules below.
+This is mostly straightforward with the exception of the negation operator
+on (purely check-based) programs which we define as \texttt{COMPLEMENT} below:
+
+To establish these results, we require a slightly stricter notion of
+extensionality.
+In the accompanying paper~\cite{DBLP:journals/corr/abs-2507-08581}
+we present all results w.r.t. this slightly stronger notion of
+extensionality.
+In practice, we are not (yet) aware of any dynamic theory which
+only satisfies the weaker form of extensionality.
+\<close>
+
 theory KATRewriting
   imports
     Main
@@ -7,7 +26,7 @@ theory KATRewriting
 begin
 
 locale KleeneDynLog =
-  KATDynLog atom_eval atom_fv_syn state_eval prog_eval
+  regular_lifting atom_eval atom_fv_syn state_eval prog_eval
       dyn_prog_FV
   for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
     and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
@@ -51,7 +70,7 @@ lemma kleene_strong_extensionality:
           full_prog_eval_int n \<pi>2 \<nu> \<omega>'"
         using eq n\<nu>_cond
         using SEQ.hyps(1)[of \<mu> \<omega> \<nu>]
-        by (metis (no_types, opaque_lifting) KATDynLog.full_prog_rewrite_seq KATDynLog_axioms SEQ.hyps(2) full_prog_eval_def full_prog_eval_int.simps(3))
+        by (metis (no_types, opaque_lifting) regular_lifting.full_prog_rewrite_seq regular_lifting_axioms SEQ.hyps(2) full_prog_eval_def full_prog_eval_int.simps(3))
     next
        assume eq: "\<forall>v. state_eval \<mu> v = state_eval \<omega> v \<and>
         state_eval \<mu>' v = state_eval \<omega>' v"
@@ -64,7 +83,7 @@ lemma kleene_strong_extensionality:
           full_prog_eval_int n \<pi>2 \<nu> \<mu>'"
         using eq n\<nu>_cond
         using SEQ.hyps(1)[of \<mu> \<omega> \<nu>]
-        by (metis (no_types, opaque_lifting) KATDynLog.full_prog_rewrite_seq KATDynLog_axioms SEQ.hyps(2) full_prog_eval_def full_prog_eval_int.simps(3))
+        by (metis (no_types, opaque_lifting) regular_lifting.full_prog_rewrite_seq regular_lifting_axioms SEQ.hyps(2) full_prog_eval_def full_prog_eval_int.simps(3))
     qed
   next
     case (CHOICE \<pi>1 \<pi>2)

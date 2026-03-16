@@ -1,3 +1,15 @@
+section\<open>Heterogeneous Dynamic Theories\<close>
+text\<open>
+\label{sec:heterogeneous}
+We now present our formalization of \emph{combination} of dynamic theories
+and its associated proof rules.
+A combined theory consists of two independent dynamic theories
+and a first-order core that can formalize statements about the \emph{crossproduct}
+of the two state spaces.
+Based on this, we first define a simple heterogeneous dynamic theory
+and then its \emph{lifted} variant which inherits havoc and regular program closure.
+\<close>
+
 theory HeterogeneousDynamicLogic
   imports
     Main
@@ -32,19 +44,24 @@ fixes atom_eval2 :: "'atom2 \<Rightarrow> 'state2 \<Rightarrow> bool"
 fixes atom_eval_comm :: "'atom_comm \<Rightarrow> ('state1 \<times> 'state2) \<Rightarrow> bool"
   and atom_fv_syn_comm :: "'atom_comm \<Rightarrow> ('var1 + 'var2) \<Rightarrow> bool"
 
-  assumes dynLog1: "dynLog atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1"
-  assumes dynLog2: "dynLog atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2"
+  assumes dynamic_theory1: "dynamic_theory atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1"
+  assumes dynamic_theory2: "dynamic_theory atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2"
   assumes colCoreComm: "folCore atom_eval_comm atom_fv_syn_comm (common_atom_eval state_eval1 state_eval2)"
 begin
 
-sublocale dyn_log_1 : dynLog atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
-  using dynLog1 by auto
+sublocale dyn_log_1 : dynamic_theory atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
+  using dynamic_theory1 by auto
 
-sublocale dyn_log_2 : dynLog atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
-  using dynLog2 by auto
+sublocale dyn_log_2 : dynamic_theory atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
+  using dynamic_theory2 by auto
 
 sublocale fol_core_comm : folCore atom_eval_comm atom_fv_syn_comm "(common_atom_eval state_eval1 state_eval2)"
   using colCoreComm by auto
+
+subsection\<open>Semantics\<close>
+text\<open>
+We begin by defining the evaluation of heterogeneous atoms and their free variables:
+\<close>
 
 fun het_atom_eval :: "('atom1,'atom2,'atom_comm) het_atom \<Rightarrow> ('state1 \<times> 'state2) \<Rightarrow> bool"
   where
@@ -60,8 +77,18 @@ fun het_atom_fv_syn :: "('atom1,'atom2,'atom_comm) het_atom \<Rightarrow> ('var1
   | "het_atom_fv_syn (ATOM2 a) (Inr v) = atom_fv_syn2 a v"
   | "het_atom_fv_syn (ATOMC a) v = atom_fv_syn_comm a v"
 
+text\<open>
+Similarly, we define the evaluation of variables which are mapped back to their
+respective state space:\<close>
+
 definition het_state_eval :: "('state1 \<times> 'state2) \<Rightarrow> ('var1+'var2) \<Rightarrow> ('val1+'val2)"
   where [simp]: "het_state_eval = (common_atom_eval state_eval1 state_eval2)"
+
+text\<open>
+In the same fashion,
+programs are then evaluated w.r.t. their underlying dynamic theory.
+A program's free/bound variables are also given by their underlying theories:
+\<close>
 
 fun het_prog_eval :: "('prog1,'prog2) het_prog \<Rightarrow> ('state1 \<times> 'state2) \<Rightarrow> ('state1 \<times> 'state2) \<Rightarrow> bool"
   where
@@ -81,6 +108,14 @@ fun het_dyn_prog_BV :: "('prog1 \<Rightarrow> 'var1 \<Rightarrow> bool) \<Righta
   | "het_dyn_prog_BV BV1 BV2 (PROG1 \<pi>) (Inr v) = False"
   | "het_dyn_prog_BV BV1 BV2 (PROG2 \<pi>) (Inl v) = False"
   | "het_dyn_prog_BV BV1 BV2 (PROG2 \<pi>) (Inr v) = BV2 \<pi> v"
+
+subsection\<open>Simple Heterogeneous Dynamic Theory\<close>
+text\<open>
+We now want to prove that the resulting constructs again form a dynamic
+theory win which we can reason about programs from both theories.
+To this end, we begin by proving that our heterogeneous atoms can be used to construct
+a (heterogeneous) first-order logic core:
+\<close>
 
 interpretation het_fol :
     folCore het_atom_eval het_atom_fv_syn het_state_eval
@@ -214,8 +249,13 @@ sublocale het_fol :
     folCore het_atom_eval het_atom_fv_syn het_state_eval
   using het_fol.folCore_axioms by blast
 
-interpretation het_dl_core :
-    dynLogCore het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
+text\<open>
+We now show that combing our heterogeneous first-order core with our definition
+of heterogeneous programs yields a dynamic theory:
+\<close>
+
+interpretation het_dl :
+    dynamic_theory het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
 proof
   show "\<And>\<pi>. finite (Collect (het_dyn_prog_FV \<pi>))"
   proof -
@@ -463,23 +503,16 @@ proof
       by (metis old.prod.exhaust)
   qed
 qed
-sublocale het_dl_core :
-    dynLogCore het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
-  using het_dl_core.dynLogCore_axioms by blast
 
-interpretation het_dl : 
-    dynLog het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
-  by standard
-
-sublocale  het_dl : 
-    dynLog het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
-  using het_dl.dynLog_axioms by blast
+sublocale het_dl:
+    dynamic_theory het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
+  using het_dl.dynamic_theory_axioms by blast
 
 
 lemma BV_overapprox:
   assumes "\<And> \<pi> v . dyn_log_1.dyn_prog_bv_sem \<pi> v \<Longrightarrow> BV1 \<pi> v"
       and "\<And> \<pi> v . dyn_log_2.dyn_prog_bv_sem \<pi> v \<Longrightarrow> BV2 \<pi> v"
-    shows "het_dl_core.dyn_prog_bv_sem \<pi> v \<Longrightarrow> het_dyn_prog_BV BV1 BV2 \<pi> v"
+    shows "het_dl.dyn_prog_bv_sem \<pi> v \<Longrightarrow> het_dyn_prog_BV BV1 BV2 \<pi> v"
 proof (induct \<pi>)
   case (PROG1 x)
   then show ?case
@@ -488,7 +521,7 @@ proof (induct \<pi>)
     then show ?case
       unfolding het_dyn_prog_BV.simps
       using assms
-      unfolding het_dl_core.dyn_prog_bv_sem.simps
+      unfolding het_dl.dyn_prog_bv_sem.simps
       unfolding dyn_log_1.dyn_prog_bv_sem.simps
       unfolding het_prog_eval.simps
       by (smt (verit, best) common_atom_eval_def fst_conv het_prog.inject(1) het_prog_eval.elims(2) het_state_eval_def map_sum.simps(1))
@@ -497,7 +530,7 @@ proof (induct \<pi>)
     then show ?case
       unfolding het_dyn_prog_BV.simps
       using assms
-      unfolding het_dl_core.dyn_prog_bv_sem.simps
+      unfolding het_dl.dyn_prog_bv_sem.simps
       unfolding dyn_log_1.dyn_prog_bv_sem.simps
       unfolding het_prog_eval.simps
       by (metis common_atom_eval_def het_prog_eval.simps(1) het_state_eval_def map_sum.simps(2) split_pairs)
@@ -510,7 +543,7 @@ next
     then show ?case
       unfolding het_dyn_prog_BV.simps
       using assms
-      unfolding het_dl_core.dyn_prog_bv_sem.simps
+      unfolding het_dl.dyn_prog_bv_sem.simps
       unfolding dyn_log_2.dyn_prog_bv_sem.simps
       unfolding het_prog_eval.simps
       by (smt (verit, ccfv_SIG) common_atom_eval_def fst_conv het_prog_eval.elims(2) het_prog_eval.simps(2) het_state_eval_def map_sum.simps(1))
@@ -519,28 +552,52 @@ next
     then show ?case
       unfolding het_dyn_prog_BV.simps
       using assms
-      unfolding het_dl_core.dyn_prog_bv_sem.simps
+      unfolding het_dl.dyn_prog_bv_sem.simps
       unfolding dyn_log_2.dyn_prog_bv_sem.simps
       unfolding het_prog_eval.simps
       by (simp add: common_atom_eval_def)
   qed
 qed
 
+subsection\<open>Full Heterogeneous Dynamic Theories\<close>
+text\<open>
+We have now established that our heterogeneous atoms and programs
+form a dynamic theory.
+Based of this knowledge, we \emph{lift} the dynamic theory to support havoc
+and regular programs:
+\<close>
+
 interpretation het_dl_havoc : 
-    HavocDynLog het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
-  using HavocDynLog_def het_dl.dynLog_axioms by blast
+    havoc_lifting het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
+  using havoc_lifting_def het_dl.dynamic_theory_axioms by blast
 
 sublocale hdl_havoc:
-    HavocDynLog het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
-  using het_dl_havoc.HavocDynLog_axioms by blast
+    havoc_lifting het_atom_eval het_atom_fv_syn het_state_eval het_prog_eval het_dyn_prog_FV
+  using het_dl_havoc.havoc_lifting_axioms by blast
 
 interpretation het_dl_kat :
-    KATDynLog  "het_atom_eval" "het_atom_fv_syn" "het_state_eval" "het_dl_havoc.full_prog_eval" "het_dl_havoc.full_prog_FV"
-  using KATDynLog_def het_dl_havoc.havoc_dl.dynLog_axioms by blast
+    regular_lifting  "het_atom_eval" "het_atom_fv_syn" "het_state_eval" "het_dl_havoc.full_prog_eval" "het_dl_havoc.full_prog_FV"
+  using regular_lifting_def het_dl_havoc.havoc_dl.dynamic_theory_axioms by blast
 
 sublocale hdl_kat:
-    KATDynLog  "het_atom_eval" "het_atom_fv_syn" "het_state_eval" "het_dl_havoc.full_prog_eval" "het_dl_havoc.full_prog_FV"
-  using het_dl_kat.KATDynLog_axioms by force
+    regular_lifting  "het_atom_eval" "het_atom_fv_syn" "het_state_eval" "het_dl_havoc.full_prog_eval" "het_dl_havoc.full_prog_FV"
+  using het_dl_kat.regular_lifting_axioms by force
+
+subsection\<open>Proof Rules\<close>
+text\<open>
+The main objective of heterogeneous dynamic theories,
+is to \emph{reuse} proof results established for individual theories
+to reason about combined systems.
+To this end, we ``only'' introduce two additional heterogenous dynamic theories:
+A rule to lift results from dynamic theory 0 and a rule to lift
+results from dynamic theory 1.
+\<close>
+
+paragraph\<open>Purity.\<close>
+text\<open>
+To formalize these rules, we first define what it means to be ``pure'' for a
+formula in heterogeneous dynamic logic:
+\<close>
 
 fun is_het_prog_pure :: "nat \<Rightarrow> ('prog1, 'prog2) het_prog \<Rightarrow> bool"
   where
@@ -758,6 +815,12 @@ next
     unfolding fol_purify_1.simps
     by simp
 qed
+
+paragraph\<open>Semantic Implications\<close>
+text\<open>Based on the purity definition above, we can show the semantic implications
+of purity of a formula w.r.t. dynamic theory 0/1:
+A formula holds in the individual theory iff it holds for all adjoined states:
+\<close>
 
 lemma dyn_het_equiv_0:
   assumes "is_fml_pure 0 \<phi>"
@@ -1569,6 +1632,11 @@ proof -
     by auto
 qed
 
+paragraph\<open>Proof Rules.\<close>
+text\<open>
+The observations from above yield the following proof rules:
+\<close>
+
 lemma dyn_axiom_R0:
   assumes "is_fml_pure 0 \<phi>"
       and "\<Turnstile>[dyn_log_1.dyn_eval] (fml_purify_1 \<phi>)"
@@ -1586,6 +1654,14 @@ lemma dyn_axiom_R1:
   unfolding theory_valid_def
   using dyn_het_equiv_1[of \<phi>]
   by auto
+
+subsubsection\<open>Inductive Expressivity\<close>
+text\<open>
+We now show that inductive expressivity from individual dynamic theories
+can also be lifted to the heterogeneous level.
+This allows us to also use the loop convergence axiom for the heterogeneous
+theory:
+\<close>
 
 fun val_nat_ext1 :: "('val1 \<Rightarrow> nat) \<Rightarrow> 'val1 + 'val2 \<Rightarrow> nat"
   where
@@ -1967,8 +2043,8 @@ next
 qed
 
 lemma inductively_expressive_1:
-  assumes nat_kat1: "NatKATDynLog atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1 val2nat nat_var plus_one_relation eq_relation positive_relation"
-  shows "NatKATDynLog het_atom_eval het_atom_fv_syn het_state_eval het_dl_havoc.full_prog_eval het_dl_havoc.full_prog_FV (val_nat_ext1 val2nat) (nat_var_ext1 nat_var) (plus_one_ext1 plus_one_relation) (eq_ext1 eq_relation) (positive_ext1 positive_relation)"
+  assumes nat_kat1: "nat_regular_lifting atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1 val2nat nat_var plus_one_relation eq_relation positive_relation"
+  shows "nat_regular_lifting het_atom_eval het_atom_fv_syn het_state_eval het_dl_havoc.full_prog_eval het_dl_havoc.full_prog_FV (val_nat_ext1 val2nat) (nat_var_ext1 nat_var) (plus_one_ext1 plus_one_relation) (eq_ext1 eq_relation) (positive_ext1 positive_relation)"
 proof
 
   show "\<forall>v. nat_var_ext1 nat_var v \<longrightarrow>
@@ -1982,7 +2058,7 @@ proof
       then show ?case
         unfolding nat_var_ext1.simps
         using nat_kat1
-        using NatKATDynLog.nat_assignability[of atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
+        using nat_regular_lifting.nat_assignability[of atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
          val2nat nat_var plus_one_relation eq_relation positive_relation]
         apply simp
         by (simp add: common_atom_eval_def is_nat_assignable_def)
@@ -2015,7 +2091,7 @@ proof
         then show ?case 
         unfolding nat_var_ext1.simps
         using nat_kat1
-        using NatKATDynLog.plus_one_sound[of atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
+        using nat_regular_lifting.plus_one_sound[of atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
          val2nat nat_var plus_one_relation eq_relation positive_relation]
         apply simp
         by (metis (no_types, lifting) common_atom_eval_def dyn_log_1.dyn_eval.simps(1) fst_conv het_state_eval_def heterify1_coincidence map_sum.simps(1) val_nat_ext1.simps(1))
@@ -2054,7 +2130,7 @@ proof
         then show ?case 
         unfolding nat_var_ext1.simps
         using nat_kat1
-        using NatKATDynLog.eq_sound[of atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
+        using nat_regular_lifting.eq_sound[of atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
          val2nat nat_var plus_one_relation eq_relation positive_relation]
         apply simp
         by (metis (no_types, lifting) common_atom_eval_def dyn_log_1.dyn_eval.simps(1) fst_conv het_state_eval_def heterify1_coincidence map_sum.simps(1) val_nat_ext1.simps(1))
@@ -2087,7 +2163,7 @@ proof
       then show ?case
         unfolding nat_var_ext1.simps
         using nat_kat1
-        using NatKATDynLog.positive_sound[of atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
+        using nat_regular_lifting.positive_sound[of atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
          val2nat nat_var plus_one_relation eq_relation positive_relation]
         apply simp
         by (metis (no_types, lifting) common_atom_eval_def dyn_log_1.dyn_eval.simps(1) fst_conv het_state_eval_def heterify1_coincidence map_sum.simps(1) val_nat_ext1.simps(1))
@@ -2101,8 +2177,8 @@ proof
 qed
 
 lemma inductively_expressive_2:
-  assumes nat_kat1: "NatKATDynLog atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2 val2nat nat_var plus_one_relation eq_relation positive_relation"
-  shows "NatKATDynLog het_atom_eval het_atom_fv_syn het_state_eval het_dl_havoc.full_prog_eval het_dl_havoc.full_prog_FV (val_nat_ext2 val2nat) (nat_var_ext2 nat_var) (plus_one_ext2 plus_one_relation) (eq_ext2 eq_relation) (positive_ext2 positive_relation)"
+  assumes nat_kat1: "nat_regular_lifting atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2 val2nat nat_var plus_one_relation eq_relation positive_relation"
+  shows "nat_regular_lifting het_atom_eval het_atom_fv_syn het_state_eval het_dl_havoc.full_prog_eval het_dl_havoc.full_prog_FV (val_nat_ext2 val2nat) (nat_var_ext2 nat_var) (plus_one_ext2 plus_one_relation) (eq_ext2 eq_relation) (positive_ext2 positive_relation)"
 proof
 
   show "\<forall>v. nat_var_ext2 nat_var v \<longrightarrow>
@@ -2116,7 +2192,7 @@ proof
       then show ?case
         unfolding nat_var_ext1.simps
         using nat_kat1
-        using NatKATDynLog.nat_assignability[of atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
+        using nat_regular_lifting.nat_assignability[of atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
          val2nat nat_var plus_one_relation eq_relation positive_relation]
         apply simp
         by (simp add: common_atom_eval_def is_nat_assignable_def)
@@ -2149,7 +2225,7 @@ proof
         then show ?case 
         unfolding nat_var_ext1.simps
         using nat_kat1
-        using NatKATDynLog.plus_one_sound[of atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
+        using nat_regular_lifting.plus_one_sound[of atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
          val2nat nat_var plus_one_relation eq_relation positive_relation]
         apply simp
         by (metis common_atom_eval_def dyn_log_2.dyn_eval.simps(1) het_state_eval_def heterify2_coincidence map_sum.simps(2) split_pairs val_nat_ext2.simps(1))
@@ -2188,7 +2264,7 @@ proof
         then show ?case 
         unfolding nat_var_ext1.simps
         using nat_kat1
-        using NatKATDynLog.eq_sound[of atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
+        using nat_regular_lifting.eq_sound[of atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
          val2nat nat_var plus_one_relation eq_relation positive_relation]
         apply simp
         by (metis common_atom_eval_def dyn_log_2.dyn_eval.simps(1) het_state_eval_def heterify2_coincidence map_sum.simps(2) split_pairs val_nat_ext2.simps(1))
@@ -2221,7 +2297,7 @@ proof
       then show ?case
         unfolding nat_var_ext1.simps
         using nat_kat1
-        using NatKATDynLog.positive_sound[of atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
+        using nat_regular_lifting.positive_sound[of atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
          val2nat nat_var plus_one_relation eq_relation positive_relation]
         apply simp
         by (metis common_atom_eval_def dyn_log_2.dyn_eval.simps(1) het_state_eval_def heterify2_coincidence map_sum.simps(2) split_pairs val_nat_ext2.simps(1))
@@ -2234,12 +2310,12 @@ proof
   qed
 qed
 
-lemma test:
+(*lemma test:
   assumes "\<Turnstile>[het_dl_kat.kat_dl.dyn_eval] \<phi>"
   shows "\<Turnstile>[het_dl_kat.kat_dl.dyn_eval] \<lbrakk> \<pi> \<rbrakk> \<phi>"
   using het_dl_kat.kat_dl.dyn_axiom_G
   using assms
-  by simp
+  by simp*)
 end
 
 end

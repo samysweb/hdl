@@ -1,3 +1,11 @@
+section\<open>Heterogeneous Rewriting\<close>
+text\<open>
+If one of the two dynamic theories combined in a dynamic theory is 
+a \emph{regularly lifted dynamic theory},
+we can rewrite single-theory sequential composition, nondeterministic choice and loops
+to their \emph{heterogeneous} counterparts.
+\<close>
+
 theory HeterogeneousRewriting
   imports
     Main
@@ -11,12 +19,12 @@ begin
 
 
 locale HeterogeneousRewriting =
-KATDynLog atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
+regular_lifting atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1
 +
 HeterogeneousDynLog
   atom_eval1 atom_fv_syn1 state_eval1
-  "(KATDynLog.full_prog_eval atom_eval1 state_eval1 prog_eval1)"
-  "(KATDynLog.full_prog_fv_syn atom_fv_syn1 dyn_prog_FV1)"
+  "(regular_lifting.full_prog_eval atom_eval1 state_eval1 prog_eval1)"
+  "(regular_lifting.full_prog_fv_syn atom_fv_syn1 dyn_prog_FV1)"
   atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
   atom_eval_comm atom_fv_syn_comm
 for atom_eval1 :: "'atom1 \<Rightarrow> 'state1 \<Rightarrow> bool"
@@ -38,8 +46,8 @@ begin
 sublocale hdl:
   HeterogeneousDynLog
   atom_eval1 atom_fv_syn1 state_eval1 
-  "(KATDynLog.full_prog_eval atom_eval1 state_eval1 prog_eval1)"
-  "(KATDynLog.full_prog_fv_syn atom_fv_syn1 dyn_prog_FV1)"
+  "(regular_lifting.full_prog_eval atom_eval1 state_eval1 prog_eval1)"
+  "(regular_lifting.full_prog_fv_syn atom_fv_syn1 dyn_prog_FV1)"
   atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2
   atom_eval_comm atom_fv_syn_comm
   using HeterogeneousDynLog_axioms by force
@@ -159,7 +167,7 @@ lemma check_rewrite:
       unfolding fml_purify_1.simps
       unfolding kat_dl.dyn_eval.simps hdl_kat.kat_dl.dyn_eval.simps
       unfolding purify_heterify_inverse
-      by (metis (no_types, lifting) dyn_eval.simps(1) full_prog_eval_def full_prog_eval_int.simps(2) hdl_havoc.havoc_dl.dyn_eval.simps(1) het_dl_core.prog_var_determinance het_prog_eval.simps(1) heterify1_coincidence kat_dl.dyn_eval.simps(1)).
+      by (metis (no_types, lifting) dyn_eval.simps(1) full_prog_eval_def full_prog_eval_int.simps(2) hdl_havoc.havoc_dl.dyn_eval.simps(1) het_dl.prog_var_determinance het_prog_eval.simps(1) heterify1_coincidence kat_dl.dyn_eval.simps(1)).
 
 lemma loop_rewrite:
   fixes \<alpha> :: "('atom1, 'var1, 'prog1) kat_prog"
@@ -228,7 +236,7 @@ lemma loop_rewrite:
           unfolding FOLTRUE_def
           unfolding full_prog_eval_def
           unfolding full_prog_eval_int.simps dyn_eval.simps
-          by (metis FOLTRUE_def dyn_eval.simps(1) fol_true_valid full_prog_eval_def full_prog_eval_int.simps(2) het_dl_core.prog_var_determinance het_prog_eval.simps(1) theory_valid_def)
+          by (metis FOLTRUE_def dyn_eval.simps(1) fol_true_valid full_prog_eval_def full_prog_eval_int.simps(2) het_dl.prog_var_determinance het_prog_eval.simps(1) theory_valid_def)
       next
         case (Suc n)
         show ?case
@@ -261,7 +269,7 @@ lemma loop_rewrite:
         unfolding hdl_kat.REP.simps
         unfolding hdl_kat.full_prog_eval_def
         unfolding hdl_kat.full_prog_eval_int.simps
-        by (metis (no_types, opaque_lifting) HeterogeneousDynLog.het_prog_eval.simps(1) HeterogeneousDynLog_axioms check_rewrite dynLogCore.dyn_eval.simps(1) fol_eval.simps(3) hdl_havoc.full_prog_eval.simps(1) hdl_kat.full_prog_eval_def hdl_kat.full_prog_eval_int.simps(1) hdl_kat.full_prog_eval_int.simps(2) hdl_kat.kat_dl.progEquivSimplification heterify1_coincidence kat_dl.dynLogCore_axioms)
+        by (metis (no_types, opaque_lifting) HeterogeneousDynLog.het_prog_eval.simps(1) HeterogeneousDynLog_axioms check_rewrite dynamic_theory.dyn_eval.simps(1) fol_eval.simps(3) hdl_havoc.full_prog_eval.simps(1) hdl_kat.full_prog_eval_def hdl_kat.full_prog_eval_int.simps(1) hdl_kat.full_prog_eval_int.simps(2) hdl_kat.kat_dl.progEquivSimplification heterify1_coincidence kat_dl.dynamic_theory_axioms)
     next
       case (Suc n)
       show ?case
@@ -323,7 +331,7 @@ sublocale hdl:
 sublocale kat_rewriting: KleeneDynLog  "het_atom_eval" "het_atom_fv_syn" "het_state_eval" "hdl_havoc.full_prog_eval" "hdl_havoc.full_prog_FV"
   unfolding KleeneDynLog_def
   apply (intro conjI)
-  using hdl_kat.KATDynLog_axioms
+  using hdl_kat.regular_lifting_axioms
    apply simp
   unfolding KleeneDynLog_axioms_def
   apply (intro allI, intro impI)

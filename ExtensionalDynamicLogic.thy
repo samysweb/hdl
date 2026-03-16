@@ -1,3 +1,11 @@
+section\<open>Extensional Dynamic Theories\<close>
+text\<open>
+\label{sec:extensional-dl}
+For completeness, we prove here that the stronger form of extensionality
+required by \texttt{KleeneDynLog} implies the weaker form of extensionality
+required by the assumption from \texttt{dynamic\_theory}.
+\<close>
+
 theory ExtensionalDynamicLogic
   imports
     Main
@@ -21,7 +29,7 @@ locale extDynLogCore =
         "\<forall> \<pi> \<mu> \<omega> \<mu>' \<omega>' . ((\<forall> v. (((state_eval \<mu>) v = (state_eval \<omega>) v) \<and> ((state_eval \<mu>') v = (state_eval \<omega>') v))) \<longrightarrow> prog_eval \<pi> \<mu> \<mu>' = prog_eval \<pi> \<omega> \<omega>')"
 begin
 
-sublocale dlc: dynLogCore atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
+sublocale dlc: dynamic_theory atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
   apply standard
   using prog_fv_finite apply simp
   using prog_fv_overapprox apply auto

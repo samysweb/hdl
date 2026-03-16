@@ -1,19 +1,20 @@
+section \<open> Dynamic Theory Locale \<close>
+text\<open>
+\label{sec:dynlog}
+We now define the dynamic theory locale which can be instantiated for a given
+dynamic logic.
+\<close>
 theory DynamicLogicCore
   imports
     Main
     "FirstOrder"
 begin
-(*section \<open> Dynamic Logic Logic -- Core \<close>
-subsection \<open> General Definitions \<close>
-text \<open>
-We begin with some general definitions which are not bound to the Dynamic Logic Core locale defined below.
-\<close>
-subsubsection \<open> Syntax \<close>
+subsection \<open> Syntax and Assumptions \<close>
 text \<open>
 Dynamic Logic Formulas can consist of first-order formulas and the typical FOL connectives.
 Additionally, we allow formulas with the box modality containing a program of type \texttt{'pr}.
 All other connectives, operators and modalities are syntactic sugar.
-\<close>*)
+\<close>
 
 datatype ('a, 'vr, 'pr) dyn_formula =
   FOL "('a, 'vr) fol_formula"
@@ -22,28 +23,26 @@ datatype ('a, 'vr, 'pr) dyn_formula =
   | FOL_ALL "'vr" "('a,'vr,'pr) dyn_formula"
   | BOX "'pr" "('a,'vr,'pr) dyn_formula"
 
-(*subsection \<open> The Dynamic Logic Core Locale \<close>
+
 text \<open>
-For the Dynamic Logic Core Locale we first of all assume an instantiation of the
+For the dynamic theory locale, we first of all assume an instantiation of the
 First Order Core Locale which gives us a way of evaluating atomic formulas and provides us
 with the syntactic (overapproximate) free variable function.
-To instantiate a Dynamic Logic we furthermore require a function evaluating programs of type \texttt{'prog}
+To instantiate a dynamic theory we furthermore require a function evaluating programs of type \texttt{'prog}
 (as a state relation) and syntactic overapproximations of free and bound variables of a program.
-\<close>*)
 
-(*
-Syntaktische Material:
-'var    Variablen
-'atom   Atomare Formeln
-'prog   Programme
+In the accompanying paper~\cite{DBLP:journals/corr/abs-2507-08581}
+we present all results w.r.t. a slightly stricter variant of the assumption
+\texttt{prog\_var\_determinance}.
+This slightly stronger (proof see \Cref{sec:extensional-dl}) notion will
+only be introduced in \Cref{subsec:kat-reasoning}.
+All other results hold for both variants.
+For simplicity, we omitted this difference in assumptions in the accompanying paper.
+In practice, we are not (yet) aware of any dynamic theory which
+only satisfies the weaker form of extensionality.
+\<close>
 
-Semantisches Material:
-'val      Mögliche Werte der Variablen
-atom_eval  Evaluation der Wahrheitswerte von Atomen in Zuständen
-prog_eval  Zustandsübergänge
-*)
-
-locale dynLogCore =
+locale dynamic_theory =
   folCore atom_eval atom_fv_syn state_eval
     for (* this is necessary because we need matching type variables *)
       atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
@@ -66,6 +65,10 @@ begin
   notation NOT ("\<rceil> _" [130] 130)
   notation FOL_ALL ("\<bbbA> _ . _" 200)
 
+  text\<open>
+  Based on the assumptions from above, we can introduce the following syntactic sugar.
+  \<close>
+
   definition DYNTRUE :: "('atom,'var,'prog) dyn_formula"
     where[simp]: "DYNTRUE = (FOL FOLTRUE)"
 
@@ -81,7 +84,6 @@ begin
   (infix "or" 110)
   where[simp]: "((a :: ('atom,'var,'prog) dyn_formula) or (b :: ('atom,'var,'prog) dyn_formula)) = \<rceil>(\<rceil>a and \<rceil>b)"
   
-  (* Derived constructs *)
   definition DIAMOND :: "'prog \<Rightarrow> ('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula" 
     ("\<langle> _ \<rangle> _" 90) where
     "\<langle>\<pi>\<rangle>\<phi> \<equiv> (\<rceil>\<lbrakk>\<pi>\<rbrakk>\<rceil>\<phi>)"
@@ -89,7 +91,11 @@ begin
   definition DYN_EX :: "'var \<Rightarrow> ('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula" 
     ("\<bbbE> _ . _" 190) where[simp]: "\<bbbE> v . \<phi> \<equiv> \<rceil>(\<bbbA> v . \<rceil>\<phi>)"
 
-  (* Semantics *)
+  subsection\<open>Semantics\<close>
+  text\<open>
+  We define the evaluation of dynamic theory formulas based on the evaluation of first-order formulas
+  and the given evaluation of programs \texttt{prog\_eval}.
+  \<close>
 
   fun dyn_eval :: "('atom,'var,'prog) dyn_formula \<Rightarrow> 'state \<Rightarrow> bool"
     where
@@ -107,6 +113,12 @@ begin
     unfolding dyn_eval.simps
     by simp
 
+  subsection\<open>Free and Bound Variables\<close>
+
+  text\<open>Based on the given functions \texttt{fol\_fv\_syn} (constructed from \texttt{atom\_fv\_syn}
+  in the first-order logic locale) and \texttt{dyn\_prog\_FV} we extend the definition of
+  free variables to dynamic theory formulas.
+  \<close>
   fun dyn_FV :: "('atom,'var,'prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool"
    where
       "dyn_FV (FOL \<phi>) v = fol_fv_syn \<phi> v"
@@ -149,7 +161,9 @@ begin
         using finite_Collect_disjI by blast
     qed
 
-  (* Free and Bound Variables (Semantic Definitions) *)
+  text\<open>
+  We also provide \emph{semantic} definitions of free and bound variables:
+  \<close>
 
   fun dyn_fv_sem :: "('atom,'var,'prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool" where
     "dyn_fv_sem \<phi> v = (\<exists> \<mu> \<omega>. (fol_equal_everywhere_but v \<mu> \<omega> \<and> (dyn_eval \<phi> \<mu> \<noteq> dyn_eval \<phi> \<omega>)))"
@@ -168,7 +182,7 @@ begin
             ((prog_eval \<pi> \<mu> \<omega>) \<and> ((state_eval \<mu>) v \<noteq> (state_eval \<omega>) v))
   )"
 
-  (* Elementary properties *)
+  text\<open>We begin by showing some elementary properties:\<close>
 
   lemma dyn_differing_state_eval_due_to_vars:
     assumes "dyn_eval F \<mu> \<noteq> dyn_eval F \<omega>"
@@ -204,7 +218,7 @@ begin
         using dyn_eval.simps
         using BOX.hyps by blast
       then show ?thesis using assms
-        by (metis (mono_tags, lifting) BOX.prems dynLogCore.dyn_eval.simps(5) dynLogCore_axioms prog_var_determinance)
+        by (metis (mono_tags, lifting) BOX.prems dynamic_theory.dyn_eval.simps(5) dynamic_theory_axioms prog_var_determinance)
     qed
   qed
 
@@ -215,7 +229,12 @@ begin
     apply simp
     by metis
 
-  (* Coincidence & Bounded Effect *)
+  subsubsection\<open>Syntactic Coincidence\<close>
+  text\<open>
+  Just as before in our first-order locale, we first prove the coincidence property for our syntactic
+  overapproximation of the free variables.
+  Subsequently, we prove coincidence w.r.t. the semantic definition.
+  \<close>
 
   definition dyn_FV_mirror_state :: "('atom,'var,'prog) dyn_formula \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
     where "dyn_FV_mirror_state F \<mu> \<omega> = fol_states_agree_on (dyn_FV F) \<mu> \<omega>"
@@ -490,7 +509,7 @@ begin
               thus "dyn_eval F \<nu>"
                 using \<upsilon>_satisfies
                 using induction_hypothesis
-                using BOX dynLogCore.dyn_FV_mirror_state_def dynLogCore_axioms
+                using BOX dynamic_theory.dyn_FV_mirror_state_def dynamic_theory_axioms
                 by metis
             qed
           qed
@@ -525,7 +544,7 @@ begin
               thus "dyn_eval F \<omega>'"
                 using \<upsilon>_satisfies
                 using induction_hypothesis
-                using BOX dynLogCore.dyn_FV_mirror_state_def dynLogCore_axioms by metis
+                using BOX dynamic_theory.dyn_FV_mirror_state_def dynamic_theory_axioms by metis
             qed
           qed
           thus "(\<forall>\<omega>. prog_eval x \<mu> \<omega> \<longrightarrow> dyn_eval F \<omega>) = (\<forall>\<omega>'. prog_eval x \<omega> \<omega>' \<longrightarrow> dyn_eval F \<omega>')"
@@ -534,6 +553,13 @@ begin
       qed
     qed
   qed
+
+  subsubsection\<open>Semantic Coincidence\<close>
+
+  text\<open>
+  To prove the semantic coincidence properties, we first show that the syntactic variant indeed
+  overapproximates the semantic variant:
+  \<close>
 
   lemma dyn_FV_fml_sound:
     "dyn_fv_sem F v \<Longrightarrow> dyn_FV F v"
@@ -545,8 +571,13 @@ begin
     "dyn_prog_fv_sem \<pi> v \<Longrightarrow> dyn_prog_FV \<pi> v"
     unfolding dyn_prog_fv_sem.simps
     using prog_fv_overapprox[of \<pi> "(dyn_prog_FV \<pi>)"]
-    by (smt (verit, ccfv_SIG) dynLogCore.prog_fv_overapprox dynLogCore_axioms fol_equal_everywhere_but_def)
-
+    by (smt (verit, ccfv_SIG) dynamic_theory.prog_fv_overapprox dynamic_theory_axioms fol_equal_everywhere_but_def)
+  
+  text\<open>
+  Based of \texttt{dyn\_FV\_fml\_sound} and \texttt{dyn\_FV\_prog\_sound},
+  we can derive that the semantic free variable definitions induce finite sets:
+  \<close>
+  
   lemma dyn_FV_prog_finite:
     "finite (Collect (dyn_prog_fv_sem \<pi>))"
     using dyn_FV_prog_sound prog_fv_finite
@@ -563,6 +594,11 @@ begin
       using dyn_FV_finite
       using rev_finite_subset by blast
   qed
+
+  text\<open>
+  These results, along with the syntactic coincidence property, now allow us to prove coincidence
+  w.r.t. the semantic definition (for dynamic formulas):
+  \<close>
 
   lemma dyn_fv_sem_coincidence:
     assumes dyn_states_agree_on_free: "(fol_states_agree_on (dyn_fv_sem F) \<mu> \<omega>)"
@@ -728,6 +764,11 @@ begin
         by (metis dyn_differing_state_eval_due_to_vars)
     qed
 
+  text\<open>
+  We can furthermore show that the set of semantically free variables
+  is the smallest set with this property:
+  \<close>
+
   lemma dyn_fv_sem_coincidence_smallest:
     fixes FVTest :: "('atom, 'var, 'prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool"
     assumes FVTest_finite: "finite (Collect (FVTest F))"
@@ -789,7 +830,15 @@ begin
       by blast
   qed
 
-  (* relevant_vars necessary? *)
+  text\<open>
+  We can then prove the coincidence property for the definition of semantically
+  free variables in a program.
+  In contrast to the semantic coincidence property for formulas,
+  we must assume that the considered states only differ on a finite set of
+  variables in this instance.
+  We can also establish a minimality property in this instance.
+  \<close>
+  
   lemma dyn_prog_fv_sem_coincidence:
     fixes \<mu>1 :: "'state"
       and \<mu>2 :: "'state"
@@ -997,6 +1046,14 @@ begin
     qed
   qed
 
+  subsubsection\<open>Semantic Bounded Effect\<close>
+  text\<open>
+  In addition to the properties shown above,
+  we also prove that the the effect of program execution is limited to
+  semantically bound variables. We also establish a minimality property
+  for this property.
+  \<close>
+
   lemma dyn_prog_bv_sem_bounded:
     "\<forall> \<mu> \<omega> \<pi>. (prog_eval \<pi> \<mu> \<omega>) \<longrightarrow> fol_states_agree_on (\<lambda> v . \<not> dyn_prog_bv_sem \<pi> v) \<mu> \<omega>"
   proof (intro allI, intro impI)
@@ -1051,6 +1108,9 @@ proof -
     unfolding dyn_prog_bv_sem.simps
     by (smt (verit) Collect_mono_iff assms(3) card_mono dyn_prog_bv_sem.simps fin1 folCore.fol_states_agree_on_def folCore_axioms leD)
 qed
+
+subsection\<open>First-Order Axioms\<close>
+text\<open>We again prove a number of first-order axioms and proof-rules\<close>
 
 lemma dyn_hilbert_mp:
   fixes \<phi> :: "('atom, 'var, 'prog) dyn_formula"
@@ -1139,7 +1199,12 @@ lemma dyn_hilbert_axiom_G:
 lemma dyn_hilbert_imp_transitive:
   "\<Turnstile>[dyn_eval] ((\<phi>1 \<Rrightarrow> \<phi>2) \<Rrightarrow> (\<phi>2 \<Rrightarrow> \<phi>3) \<Rrightarrow> (\<phi>1 \<Rrightarrow> \<phi>3))"
   by simp
-  
+
+subsection\<open>Dynamic Theory Axioms\<close>
+text\<open>
+In addition, we prove four dynamic theory axioms and proof rules
+that hold irrespective of the concrete instantiation of a dynamic theory.
+\<close>
 
 lemma dyn_axiom_G:
   fixes \<phi> :: "('atom,'var,'prog) dyn_formula"

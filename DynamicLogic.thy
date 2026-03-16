@@ -4,13 +4,7 @@ theory DynamicLogic
     "DynamicLogicCore"
 begin
 
-locale dynLog =
-  dynLogCore atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
-  for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
-  and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
-  and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
-  and prog_eval :: "'prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
-  and dyn_prog_FV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
+context dynamic_theory
 begin
 
 lemma dyn_axiom_V:
