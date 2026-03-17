@@ -3,7 +3,8 @@
 This artifact contains the Isabelle formalization of the paper *Heterogeneous Dynamic Logic: Provability Modulo Program Theories*.
 We formalize *dynamic theories* and prove that three dynamic logics are instantiations of this concept.
 
-A detailed documentation of heterogeneous dynamic logic can be found in the [proof outline](/documentation/outline-hdl.pdf).
+We provide a [reference](/documentation/Isabelle-Paper-Reference.pdf) which maps concepts from the paper to Isabelle definitions and lemmas.
+A more detailed documentation of heterogeneous dynamic logic can be found in the [proof outline](/documentation/outline-hdl.pdf).
 A documentation of the proof that differential dynamic logic is an instantiation of a dynamic theory can be found [here](/documentation/outline-diff-dl.pdf).
 
 ## Dependencies
