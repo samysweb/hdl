@@ -17,3 +17,12 @@ The proof was built with the Isabelle 2025 release of the AFP available [here](h
 
 To compile the theories in Isabelle,
 update the directory pointers to Isabelle and the AFP's `./thys/` directory in `build.sh` and then run it.
+
+## Reproducibility
+To ensure reproducibility beyond the lifespan of linked servers, we also refer to a mirror on archive.org:
+- Isabelle 2025:
+    - Linux (Intel): [zip via archive.org (slower)](https://web.archive.org/web/20250330090403/https://isabelle.in.tum.de/website-Isabelle2025/dist/Isabelle2025_linux.tar.gz)
+    - Linux (ARM): [zip via archive.org (slower)](https://web.archive.org/web/20260317202834/https://isabelle.in.tum.de/website-Isabelle2025/dist/Isabelle2025_linux_arm.tar.gz)
+    - Windows: [zip via archive.org (slower)](https://web.archive.org/web/20260317202724/https://isabelle.in.tum.de/website-Isabelle2025/dist/Isabelle2025.exe)
+    - Apple: [zip via archive.org (slower)](https://web.archive.org/web/20260317202744/https://isabelle.in.tum.de/website-Isabelle2025/dist/Isabelle2025_macos.tar.gz)
+- AFP: [zip available for download via archive.org (slower)](https://web.archive.org/web/20260317165431/https://foss.heptapod.net/isa-afp/afp-devel/-/archive/Isabelle2025/afp-devel-Isabelle2025.zip?ref_type=tags)
