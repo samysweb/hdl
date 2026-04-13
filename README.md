@@ -10,13 +10,28 @@ A documentation of the proof that differential dynamic logic is an instantiation
 ## Dependencies
 This formalization was built with **Isabelle 2025** (March 2025 release) available [here](https://isabelle.in.tum.de/website-Isabelle2025/index.html)
 
+Additionally, we require the following dependencies:
+- TeXLive (for building the proof outlines via Isabelle)
+- Z3
+
 The proof that differential dynamic logic is an instantiation of a dynamic theory is based on the AFP differential dynamic logic formalization by Rose Bohrer.
 The proof was built with the Isabelle 2025 release of the AFP available [here](https://foss.heptapod.net/isa-afp/afp-devel/-/archive/Isabelle2025/afp-devel-Isabelle2025.zip?ref_type=tags)
 
-## Building the Formalization
+## Getting Started
 
-To compile the theories in Isabelle,
-update the directory pointers to Isabelle and the AFP's `./thys/` directory in `build.sh` and then run it.
+- Download and install Isabelle (use [this link](https://isabelle.in.tum.de/website-Isabelle2025/index.html) or archive.org mirrors below)
+- Download and install TeXLive and Z3  
+  For Debian-based systems this can be achieved via: `sudo apt install texlive z3`
+- *To build differential dynamic logic instantiation:* Download [2025 Version of the AFP](https://foss.heptapod.net/isa-afp/afp-devel/-/archive/Isabelle2025/afp-devel-Isabelle2025.zip?ref_type=tags) (alternatively see archive.org mirror below)
+- *If necessary:* Adapt the paths for the isabelle binary (typically `[Isabelle folder]/bin/isabelle`) and the AFP (`[AFP folder]/thys`) in the `build.sh` script:  
+  ```
+    export ISABELLE="[Isabelle path here]"
+    export ISABELLE_AFP_THYS="[AFP path here]"
+    ```
+- **Building the formalization:** Run `build.sh`  
+  This command will run for a while (up to 35 minutes) and should eventually report that, both, the heterogeneous dynamic logic formalization and the formalization of the differential dynamic logic instantiation have been built.
+- **Inspecting/Using the formalization:** To inspect, extend or use the formalization in Isabelle, you can open it at as follows in its editor `jedit`: `[Path to Isabelle Binary] jedit -d . DynamicLogicCore.thy`
+
 
 ## Reproducibility
 To ensure reproducibility beyond the lifespan of linked servers, we also refer to a mirror on archive.org:
