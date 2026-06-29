@@ -95,12 +95,12 @@ For any given atom \texttt{atom\_fv\_syn} must be true only for a finite set of 
 \<close>
 locale folCore =
   fixes atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
-    and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
-    and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
+    and atom_fv_syn :: "'atom \<Rightarrow> ('var + 'qfvar) \<Rightarrow> bool"
+    and state_eval :: "'state \<Rightarrow> ('var + 'qfvar) \<Rightarrow> 'val"
   assumes fv_finite: "finite (Collect (atom_fv_syn a))"
       and fv_overapprox: "(fol_states_agree_on_gen state_eval (atom_fv_syn (a::'atom)) (\<mu>::'state) (\<omega>::'state)) \<Longrightarrow> (atom_eval a \<mu>) = (atom_eval a \<omega>)"
       and state_space_convexity:
-          "\<forall> \<omega> :: 'state . \<forall> \<mu>  :: 'state . \<forall> V :: 'var set . (
+          "\<forall> \<omega> :: 'state . \<forall> \<mu>  :: 'state . \<forall> V :: ('var + 'qfvar) set . (
             (\<exists> \<nu>  :: 'state . (
               (\<forall> v . 
               (v \<in> V \<longrightarrow> ((state_eval \<nu>) v) = ((state_eval \<mu>) v)) \<and>
@@ -112,16 +112,16 @@ We now define a few additional constructs that help us to reason about differenc
 between states.
 \<close>
 
-  definition fol_state_var_diff_set :: "'state \<Rightarrow> 'state \<Rightarrow> 'var set"
-    where "fol_state_var_diff_set \<mu> \<omega> = Collect (\<lambda> v :: 'var . (state_eval \<mu>) v \<noteq> (state_eval \<omega>) v)"
+  definition fol_state_var_diff_set :: "'state \<Rightarrow> 'state \<Rightarrow> ('var + 'qfvar) set"
+    where "fol_state_var_diff_set \<mu> \<omega> = Collect (\<lambda> v ::  ('var + 'qfvar) . (state_eval \<mu>) v \<noteq> (state_eval \<omega>) v)"
   
-  definition fol_state_var_diff_set_filter :: "'state \<Rightarrow> 'state \<Rightarrow> ('var \<Rightarrow> bool) \<Rightarrow> 'var set"
-    where "fol_state_var_diff_set_filter \<mu> \<omega> f = Collect (\<lambda> v :: 'var . (((state_eval \<mu>) v \<noteq> (state_eval \<omega>) v) \<and> (f v)))"
+  definition fol_state_var_diff_set_filter :: "'state \<Rightarrow> 'state \<Rightarrow> ( ('var + 'qfvar) \<Rightarrow> bool) \<Rightarrow>  ('var + 'qfvar) set"
+    where "fol_state_var_diff_set_filter \<mu> \<omega> f = Collect (\<lambda> v ::  ('var + 'qfvar) . (((state_eval \<mu>) v \<noteq> (state_eval \<omega>) v) \<and> (f v)))"
   
-  definition fol_states_agree_on :: "(('var \<Rightarrow> bool) \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool)"
+  definition fol_states_agree_on :: "(( ('var + 'qfvar) \<Rightarrow> bool) \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool)"
     where "fol_states_agree_on f \<mu> \<omega> = (\<forall> v . ((f v) \<longrightarrow> ((state_eval \<mu>) v = (state_eval \<omega>) v)))"
   
-  definition fol_equal_everywhere_but :: "'var \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
+  definition fol_equal_everywhere_but :: " ('var + 'qfvar) \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
     where "fol_equal_everywhere_but v \<mu> \<omega> = fol_states_agree_on (\<lambda> w. w \<noteq> v) \<mu> \<omega>"
 
   subsubsection \<open> Syntactic Free Variables \<close>
@@ -129,7 +129,7 @@ between states.
     We extend the notion of syntactic free variables (given for atoms by \texttt{atom\_fv\_syn})
     to formulas and show that formulas also have a finite set of free variables.
   \<close>
-  fun fol_fv_syn :: "('atom,'var) fol_formula \<Rightarrow> 'var \<Rightarrow> bool"
+  fun fol_fv_syn :: "('atom,'var) fol_formula \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
    where
       "fol_fv_syn (ATOM \<phi>) v = atom_fv_syn \<phi> v"
     | "fol_fv_syn (\<phi> and \<psi>) v = (fol_fv_syn \<phi> v \<or> fol_fv_syn \<psi> v)"
@@ -167,7 +167,7 @@ between states.
       "fol_eval (ATOM \<phi>) \<mu> = atom_eval \<phi> \<mu>"
     | "fol_eval (\<phi> and \<psi>) \<mu> = ((fol_eval \<phi> \<mu>) \<and> (fol_eval \<psi> \<mu>))"
     | "fol_eval (\<rceil> \<phi>) \<mu> = (\<not> (fol_eval \<phi> \<mu>))"
-    | "fol_eval (folall v \<phi>) \<mu> = (\<forall> \<omega>. fol_equal_everywhere_but v \<mu> \<omega> \<longrightarrow> (fol_eval \<phi> \<omega>))"
+    | "fol_eval (folall v \<phi>) \<mu> = (\<forall> \<omega>. fol_equal_everywhere_but (Inl v) \<mu> \<omega> \<longrightarrow> (fol_eval \<phi> \<omega>))"
 
   definition fol_valid :: "('atom,'var) fol_formula \<Rightarrow> bool"
     where [simp]: "fol_valid \<phi> = (\<Turnstile>[fol_eval] \<phi>)"
@@ -195,7 +195,7 @@ between states.
     In particular, using this definition for infinitary predicates would break the coincidence property.
     Moreover, it's unclear what the minimal set would be....
   \<close>
-  fun fol_fv_sem :: "('atom,'var) fol_formula \<Rightarrow> 'var \<Rightarrow> bool" where
+  fun fol_fv_sem :: "('atom,'var) fol_formula \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool" where
     "fol_fv_sem \<phi> v = (\<exists> \<mu> \<omega>. (fol_equal_everywhere_but v \<mu> \<omega> \<and> (fol_eval \<phi> \<mu> \<noteq> fol_eval \<phi> \<omega>)))"
 
   paragraph \<open>Results on Syntactically Free Variables \<close>
@@ -248,7 +248,7 @@ between states.
           let ?VDiff = "fol_state_var_diff_set \<mu> \<omega>"
           let ?VDiffRelevant = "fol_state_var_diff_set_filter \<mu> \<omega> (fol_fv_syn F)"
 
-          obtain S :: "'var set \<Rightarrow> 'state"
+          obtain S :: " ('var + 'qfvar) set \<Rightarrow> 'state"
             where S_cond: "\<forall> V. \<forall> w . (((state_eval (S V)) w) = (if w \<in> V then ((state_eval \<omega>) w) else ((state_eval \<mu>) w)))"
             using state_space_convexity
             by metis
@@ -291,17 +291,17 @@ between states.
             assume vdiff_state_satisfies_formula: "( fol_eval (folall x  F) (S ?VDiff))"
             show "(fol_eval (folall x  F) (S ?VDiffRelevant))"
             proof (simp, rule ccontr, simp)
-              assume "\<exists>\<omega>'. fol_equal_everywhere_but x (S (fol_state_var_diff_set_filter \<mu> \<omega> (fol_fv_syn F))) \<omega>' \<and>
+              assume "\<exists>\<omega>'. fol_equal_everywhere_but (Inl x) (S (fol_state_var_diff_set_filter \<mu> \<omega> (fol_fv_syn F))) \<omega>' \<and>
                         \<not> fol_eval F \<omega>'"
-              then have cex_state: "\<exists>\<omega>'. fol_equal_everywhere_but x (S (fol_state_var_diff_set_filter \<mu> \<omega> (fol_fv_syn F))) \<omega>' \<and>
+              then have cex_state: "\<exists>\<omega>'. fol_equal_everywhere_but (Inl x) (S (fol_state_var_diff_set_filter \<mu> \<omega> (fol_fv_syn F))) \<omega>' \<and>
                 \<not> fol_eval F \<omega>'"
                 unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
                 by simp
-              obtain \<sigma> where sigma_constraints: "fol_equal_everywhere_but x (S ?VDiffRelevant) \<sigma> \<and>  \<not> fol_eval F \<sigma>"
+              obtain \<sigma> where sigma_constraints: "fol_equal_everywhere_but (Inl x) (S ?VDiffRelevant) \<sigma> \<and>  \<not> fol_eval F \<sigma>"
                 using cex_state by blast
 
-              obtain \<gamma> where \<gamma>_cond1: "(state_eval \<gamma>) x = (state_eval \<sigma>) x"
-                         and \<gamma>_cond2: "\<forall> v . v \<noteq> x \<longrightarrow> (state_eval \<gamma>) v = (state_eval (S ?VDiff)) v"
+              obtain \<gamma> where \<gamma>_cond1: "(state_eval \<gamma>) (Inl x) = (state_eval \<sigma>) (Inl x)"
+                         and \<gamma>_cond2: "\<forall> v . v \<noteq> (Inl x) \<longrightarrow> (state_eval \<gamma>) v = (state_eval (S ?VDiff)) v"
                 using state_space_convexity
                 by (meson emptyE insert_iff)
       
@@ -314,7 +314,7 @@ between states.
       
               have gamma_sat: "fol_eval F \<gamma>"
               proof -
-                have "fol_equal_everywhere_but x (S ?VDiff) \<gamma>"
+                have "fol_equal_everywhere_but (Inl x) (S ?VDiff) \<gamma>"
                   using \<gamma>_cond1 \<gamma>_cond2
                   using vdiff_state_satisfies_formula fol_equal_everywhere_but_def fol_states_agree_on_def
                   by fastforce          
@@ -344,15 +344,15 @@ between states.
             assume vdiff_state_satisfies_formula: "(fol_eval (folall x F) (S ?VDiffRelevant))"
             show "( fol_eval (folall x  F) (S ?VDiff))"
             proof (simp, rule ccontr, simp)
-              assume "\<exists>\<omega>'. fol_equal_everywhere_but x (S (fol_state_var_diff_set \<mu> \<omega>)) \<omega>' \<and> \<not> fol_eval F \<omega>'"
-              then have cex_state: "\<exists>\<omega>'. fol_equal_everywhere_but x (S (fol_state_var_diff_set \<mu> \<omega>)) \<omega>' \<and> \<not> fol_eval F \<omega>'"
+              assume "\<exists>\<omega>'. fol_equal_everywhere_but (Inl x) (S (fol_state_var_diff_set \<mu> \<omega>)) \<omega>' \<and> \<not> fol_eval F \<omega>'"
+              then have cex_state: "\<exists>\<omega>'. fol_equal_everywhere_but (Inl x) (S (fol_state_var_diff_set \<mu> \<omega>)) \<omega>' \<and> \<not> fol_eval F \<omega>'"
                 unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
                 by simp
-              obtain \<sigma> where sigma_constraints: "fol_equal_everywhere_but x (S (fol_state_var_diff_set \<mu> \<omega>)) \<sigma> \<and>  \<not> fol_eval F \<sigma>"
+              obtain \<sigma> where sigma_constraints: "fol_equal_everywhere_but (Inl x) (S (fol_state_var_diff_set \<mu> \<omega>)) \<sigma> \<and>  \<not> fol_eval F \<sigma>"
                 using cex_state by blast
               
-              obtain \<gamma> where \<gamma>_cond1: "(state_eval \<gamma>) x = (state_eval \<sigma>) x"
-                         and \<gamma>_cond2: "\<forall> v . v \<noteq> x \<longrightarrow> (state_eval \<gamma>) v = (state_eval (S ?VDiffRelevant)) v"
+              obtain \<gamma> where \<gamma>_cond1: "(state_eval \<gamma>) (Inl x) = (state_eval \<sigma>) (Inl x)"
+                         and \<gamma>_cond2: "\<forall> v . v \<noteq> (Inl x) \<longrightarrow> (state_eval \<gamma>) v = (state_eval (S ?VDiffRelevant)) v"
                 using state_space_convexity
                 by (meson emptyE insert_iff)
       
@@ -365,7 +365,7 @@ between states.
       
               have gamma_sat: "fol_eval F \<gamma>"
               proof -
-                have "fol_equal_everywhere_but x (S ?VDiffRelevant) \<gamma>"
+                have "fol_equal_everywhere_but (Inl x) (S ?VDiffRelevant) \<gamma>"
                   using \<gamma>_cond1 \<gamma>_cond2
                   using vdiff_state_satisfies_formula fol_equal_everywhere_but_def fol_states_agree_on_def
                   by fastforce          
@@ -460,7 +460,7 @@ text \<open>
       using synFV_finite
       using rev_finite_subset by blast
 
-    obtain S :: "'var set \<Rightarrow> 'state"
+    obtain S :: "('var + 'qfvar) set \<Rightarrow> 'state"
             where S_cond: "\<forall> V. \<forall> w . (((state_eval (S V)) w) = (if w \<in> V then ((state_eval \<nu>) w) else ((state_eval \<mu>) w)))"
             using state_space_convexity
             by metis
@@ -586,7 +586,7 @@ a subset relation.
 \<close>
 
 lemma fol_fv_sem_coincidence_smallest:
-    fixes FVTest :: "('atom, 'var) fol_formula \<Rightarrow> 'var \<Rightarrow> bool"
+    fixes FVTest :: "('atom, 'var) fol_formula \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
     assumes FVTest_finite: "finite (Collect (FVTest F))"
     assumes semFVSmaller: "card (Collect (FVTest F)) < card (Collect (fol_fv_sem F))"
     shows "\<exists> \<mu> \<omega> . ( (fol_states_agree_on (FVTest F) \<mu> \<omega>) \<and> fol_eval F \<mu> \<noteq> fol_eval F \<omega>)"
@@ -626,7 +626,7 @@ lemma fol_fv_sem_coincidence_smallest:
       
     then have "\<exists> \<mu> \<omega> . ( (fol_states_agree_on (FVTest F) \<mu> \<omega>) \<and> fol_eval F \<mu> \<noteq> fol_eval F \<omega>)"
     proof -
-      obtain w :: 'var where w_condition: "\<not>(FVTest F w) \<and> (fol_fv_sem F w)" using semFVSubset by blast
+      obtain w ::  "('var + 'qfvar)" where w_condition: "\<not>(FVTest F w) \<and> (fol_fv_sem F w)" using semFVSubset by blast
     
       obtain \<mu> \<omega> where agree: "fol_states_agree_on (\<lambda>wa. wa \<noteq> w) \<mu> \<omega>"
                  and eval_diff: "fol_eval F \<mu> = (\<not> fol_eval F \<omega>)"
@@ -671,17 +671,17 @@ lemma fol_hilbert_axiom_6: "\<Turnstile>[fol_eval] (folall v (\<phi> \<Rrightarr
   by blast
 
 lemma fol_hilbert_axiom_7:
-  assumes fv_assumption: "\<not> fol_fv_sem \<phi> v"
+  assumes fv_assumption: "\<not> fol_fv_sem \<phi> (Inl v)"
   shows "\<Turnstile>[fol_eval] \<phi> \<Rrightarrow> folall v \<phi>"
 proof (simp, intro allI, intro impI)
   fix \<mu>
   assume phi_satisfied: "fol_eval \<phi> \<mu>"
   
-  show "\<forall>\<omega>. fol_equal_everywhere_but v \<mu> \<omega> \<longrightarrow> fol_eval \<phi> \<omega>"
+  show "\<forall>\<omega>. fol_equal_everywhere_but (Inl v) \<mu> \<omega> \<longrightarrow> fol_eval \<phi> \<omega>"
   proof (rule ccontr, simp)
-    assume "\<exists>\<omega>. fol_equal_everywhere_but v \<mu> \<omega> \<and> \<not> fol_eval \<phi> \<omega>"
+    assume "\<exists>\<omega>. fol_equal_everywhere_but (Inl v) \<mu> \<omega> \<and> \<not> fol_eval \<phi> \<omega>"
 
-    then obtain \<omega> where almost_equal: "fol_equal_everywhere_but v \<mu> \<omega>"
+    then obtain \<omega> where almost_equal: "fol_equal_everywhere_but (Inl v) \<mu> \<omega>"
                     and not_satisfied: "\<not> fol_eval \<phi> \<omega>" by auto
 
     have "fol_eval \<phi> \<omega>"

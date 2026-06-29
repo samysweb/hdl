@@ -44,21 +44,21 @@ as follows:\<close>
 locale havoc_lifting =
     dynamic_theory atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
     for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
-    and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
-    and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
+    and atom_fv_syn :: "'atom \<Rightarrow> ('var + 'qfvar) \<Rightarrow> bool"
+    and state_eval :: "'state \<Rightarrow> ('var + 'qfvar) \<Rightarrow> 'val"
     and prog_eval :: "'prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
-    and dyn_prog_FV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
+    and dyn_prog_FV :: "'prog \<Rightarrow> ('var + 'qfvar) \<Rightarrow> bool"
 begin
 
 fun full_prog_eval :: "('atom,'var,'prog) havoc_prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
   where
     "full_prog_eval (HPROG \<pi>) \<mu> \<omega> = prog_eval \<pi> \<mu> \<omega>"
-  | "full_prog_eval (HAVOC v) \<mu> \<omega> = fol_equal_everywhere_but v \<mu> \<omega>"
+  | "full_prog_eval (HAVOC v) \<mu> \<omega> = fol_equal_everywhere_but (Inl v) \<mu> \<omega>"
 
 text\<open>The semantics allow us to define the syntactic overapproximation of
 free variables as follows:\<close>
 
-fun full_prog_FV :: "('atom,'var,'prog) havoc_prog \<Rightarrow> 'var \<Rightarrow> bool"
+fun full_prog_FV :: "('atom,'var,'prog) havoc_prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
   where
     "full_prog_FV (HPROG \<pi>) v = dyn_prog_FV \<pi> v"
   | "full_prog_FV (HAVOC v) w = False"
@@ -68,10 +68,10 @@ It furthermore allows us to define the bound variables of a given program as fol
 (assuming a given definition of syntactically bound variables \texttt{BV} for the underlying
 dynamic theory):\<close>
 
-fun full_prog_BV :: "('prog \<Rightarrow> 'var \<Rightarrow> bool) \<Rightarrow> ('atom,'var,'prog) havoc_prog \<Rightarrow> 'var \<Rightarrow> bool"
+fun full_prog_BV :: "('prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool) \<Rightarrow> ('atom,'var,'prog) havoc_prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
   where
     "full_prog_BV BV (HPROG \<pi>) v = BV \<pi> v"
-  | "full_prog_BV BV (HAVOC v) w = (v=w)"
+  | "full_prog_BV BV (HAVOC v) w = ((Inl v)=w)"
 
 subsubsection\<open>Dynamic Theory and Proof Rules\<close>
 text\<open>
@@ -119,12 +119,12 @@ proof
           unfolding fol_states_agree_on_def
         proof 
           assume havoc_assms: "(\<forall>v. False \<longrightarrow> V v) \<and>
-            (\<forall>v. V v \<longrightarrow> state_eval \<mu> v = state_eval \<omega> v) \<and> (\<forall>v. v \<noteq> x \<longrightarrow> state_eval \<mu> v = state_eval \<nu> v)"
-        obtain \<nu>1 where \<nu>1_cond: "(state_eval \<nu>1) x = (state_eval \<nu>) x \<and> fol_equal_everywhere_but x \<nu>1 \<omega>"
+            (\<forall>v. V v \<longrightarrow> state_eval \<mu> v = state_eval \<omega> v) \<and> (\<forall>v. v \<noteq> (Inl x) \<longrightarrow> state_eval \<mu> v = state_eval \<nu>  v)"
+        obtain \<nu>1 where \<nu>1_cond: "(state_eval \<nu>1) (Inl x) = (state_eval \<nu>) (Inl x) \<and> fol_equal_everywhere_but (Inl x) \<nu>1 \<omega>"
           using state_space_convexity
           unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
           by (meson singleton_iff)
-        show "\<exists>\<upsilon>. (\<forall>v. v \<noteq> x \<longrightarrow> state_eval \<omega> v = state_eval \<upsilon> v) \<and> (\<forall>v. V v \<longrightarrow> state_eval \<nu> v = state_eval \<upsilon> v)"
+        show "\<exists>\<upsilon>. (\<forall>v. v \<noteq> (Inl x) \<longrightarrow> state_eval \<omega> v = state_eval \<upsilon> v) \<and> (\<forall>v. V v \<longrightarrow> state_eval \<nu> v = state_eval \<upsilon> v)"
           using \<nu>1_cond
           apply (intro exI[where x="\<nu>1"],intro conjI)
           using fol_equal_everywhere_but_def fol_states_agree_on_def apply force
@@ -167,7 +167,7 @@ next
     unfolding full_prog_BV.simps
     unfolding fol_equal_everywhere_but_def
     unfolding fol_states_agree_on_def
-    by auto
+    by metis
 qed
 
 text\<open>

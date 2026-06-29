@@ -46,11 +46,11 @@ locale dynamic_theory =
   folCore atom_eval atom_fv_syn state_eval
     for (* this is necessary because we need matching type variables *)
       atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
-      and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
-      and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
+      and atom_fv_syn :: "'atom \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
+      and state_eval :: "'state \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> 'val"
   +
   fixes prog_eval :: "'prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
-    and dyn_prog_FV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
+    and dyn_prog_FV :: "'prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
   assumes prog_fv_finite: "finite (Collect (dyn_prog_FV \<pi>))"
         and prog_fv_overapprox:
         "\<And> \<pi> V \<mu> \<omega> \<nu> . ((\<forall> v . ((dyn_prog_FV \<pi> v) \<longrightarrow> (V v))) \<and> fol_states_agree_on V \<mu> \<omega> \<and> prog_eval \<pi> \<mu> \<nu>) \<longrightarrow> (\<exists> \<upsilon> . prog_eval \<pi> \<omega> \<upsilon> \<and> fol_states_agree_on V \<nu> \<upsilon>)"
@@ -102,7 +102,7 @@ begin
       "dyn_eval (FOL \<phi>) \<mu> = fol_eval \<phi> \<mu>"
     | "dyn_eval (\<phi> and \<psi>) \<mu> = ((dyn_eval \<phi> \<mu>) \<and> (dyn_eval \<psi> \<mu>))"
     | "dyn_eval (\<rceil> \<phi>) \<mu> = (\<not> (dyn_eval \<phi> \<mu>))"
-    | "dyn_eval (\<bbbA> v . \<phi>) \<mu> = (\<forall> \<omega>. fol_equal_everywhere_but v \<mu> \<omega> \<longrightarrow> (dyn_eval \<phi> \<omega>))"
+    | "dyn_eval (\<bbbA> v . \<phi>) \<mu> = (\<forall> \<omega>. fol_equal_everywhere_but (Inl v) \<mu> \<omega> \<longrightarrow> (dyn_eval \<phi> \<omega>))"
     | "dyn_eval (\<lbrakk>\<alpha>\<rbrakk>\<phi>) \<mu> = (\<forall> \<omega>. (prog_eval \<alpha> \<mu> \<omega>) \<longrightarrow> (dyn_eval \<phi> \<omega>))"
 
   (* Let's quickly show that our definition of true is correct *)
@@ -119,12 +119,12 @@ begin
   in the first-order logic locale) and \texttt{dyn\_prog\_FV} we extend the definition of
   free variables to dynamic theory formulas.
   \<close>
-  fun dyn_FV :: "('atom,'var,'prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool"
+  fun dyn_FV :: "('atom,'var,'prog) dyn_formula \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
    where
       "dyn_FV (FOL \<phi>) v = fol_fv_syn \<phi> v"
     | "dyn_FV (\<phi> and \<psi>) v = (dyn_FV \<phi> v \<or> dyn_FV \<psi> v)"
     | "dyn_FV (\<rceil> \<phi>) v = (dyn_FV \<phi> v)"
-    | "dyn_FV (\<bbbA> v . \<phi>) w = (if (v=w) then False else dyn_FV \<phi> w)"
+    | "dyn_FV (\<bbbA> v . \<phi>) w = (if ((Inl v)=w) then False else dyn_FV \<phi> w)"
     | "dyn_FV (\<lbrakk> \<pi> \<rbrakk> \<phi>) v = (dyn_FV \<phi> v \<or> dyn_prog_FV \<pi> v)"
 
   lemma dyn_FV_finite: "finite (Collect (dyn_FV \<phi>))"
@@ -165,10 +165,10 @@ begin
   We also provide \emph{semantic} definitions of free and bound variables:
   \<close>
 
-  fun dyn_fv_sem :: "('atom,'var,'prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool" where
+  fun dyn_fv_sem :: "('atom,'var,'prog) dyn_formula \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool" where
     "dyn_fv_sem \<phi> v = (\<exists> \<mu> \<omega>. (fol_equal_everywhere_but v \<mu> \<omega> \<and> (dyn_eval \<phi> \<mu> \<noteq> dyn_eval \<phi> \<omega>)))"
 
-  fun dyn_prog_fv_sem :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
+  fun dyn_prog_fv_sem :: "'prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
     where "dyn_prog_fv_sem \<pi> v = (
             \<exists> \<mu> \<omega> \<nu>.
               ((fol_equal_everywhere_but v \<mu> \<omega>) \<and>
@@ -176,7 +176,7 @@ begin
               (\<forall> \<upsilon>. (prog_eval \<pi> \<omega> \<upsilon>) \<longrightarrow> \<not>(fol_equal_everywhere_but v \<nu> \<upsilon>)))
   )"
   
-  fun dyn_prog_bv_sem :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
+  fun dyn_prog_bv_sem :: "'prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
     where "dyn_prog_bv_sem \<pi> v = (
           \<exists> \<mu> \<omega>.
             ((prog_eval \<pi> \<mu> \<omega>) \<and> ((state_eval \<mu>) v \<noteq> (state_eval \<omega>) v))
@@ -222,7 +222,7 @@ begin
     qed
   qed
 
-  lemma dyn_fv_sem_all_not_free: "( \<not>(dyn_fv_sem (\<bbbA> v . \<phi>) v  ) )"
+  lemma dyn_fv_sem_all_not_free: "( \<not>(dyn_fv_sem (\<bbbA> v . \<phi>) (Inl v)  ) )"
     unfolding dyn_fv_sem.simps
     unfolding dyn_eval.simps
     unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
@@ -283,7 +283,7 @@ begin
           let ?VDiff = "fol_state_var_diff_set \<mu> \<omega>"
           let ?VDiffRelevant = "fol_state_var_diff_set_filter \<mu> \<omega> (dyn_FV F)"
 
-          obtain S :: "'var set \<Rightarrow> 'state"
+          obtain S :: " ('var + 'qfvar) set \<Rightarrow> 'state"
             where S_cond: "\<forall> V. \<forall> w . (((state_eval (S V)) w) = (if w \<in> V then ((state_eval \<omega>) w) else ((state_eval \<mu>) w)))"
             using state_space_convexity
             by metis
@@ -325,13 +325,13 @@ begin
             assume vdiff_state_satisfies_formula: "( dyn_eval (\<bbbA> x . F) (S ?VDiff))"
             show "(dyn_eval (\<bbbA> x . F) (S ?VDiffRelevant))"
             proof (simp, rule ccontr, simp)
-              assume cex_state: "\<exists>\<omega>'. fol_equal_everywhere_but x (S (fol_state_var_diff_set_filter \<mu> \<omega> (dyn_FV F))) \<omega>' \<and>
+              assume cex_state: "\<exists>\<omega>'. fol_equal_everywhere_but (Inl x) (S (fol_state_var_diff_set_filter \<mu> \<omega> (dyn_FV F))) \<omega>' \<and>
                 \<not> dyn_eval F \<omega>'"
-              obtain \<sigma> where sigma_constraints: "fol_equal_everywhere_but x (S ?VDiffRelevant) \<sigma> \<and>  \<not> dyn_eval F \<sigma>"
+              obtain \<sigma> where sigma_constraints: "fol_equal_everywhere_but (Inl x) (S ?VDiffRelevant) \<sigma> \<and>  \<not> dyn_eval F \<sigma>"
                 using cex_state by blast
 
-              obtain \<gamma> where \<gamma>_cond1: "(state_eval \<gamma>) x = (state_eval \<sigma>) x"
-                         and \<gamma>_cond2: "\<forall> v . v \<noteq> x \<longrightarrow> (state_eval \<gamma>) v = (state_eval (S ?VDiff)) v"
+              obtain \<gamma> where \<gamma>_cond1: "(state_eval \<gamma>) (Inl x) = (state_eval \<sigma>) (Inl x)"
+                         and \<gamma>_cond2: "\<forall> v . v \<noteq> (Inl x) \<longrightarrow> (state_eval \<gamma>) v = (state_eval (S ?VDiff)) v"
                 using state_space_convexity
                 by (meson emptyE insert_iff)
       
@@ -345,7 +345,7 @@ begin
       
               have gamma_sat: "dyn_eval F \<gamma>"
               proof -
-                have "fol_equal_everywhere_but x (S ?VDiff) \<gamma>"
+                have "fol_equal_everywhere_but (Inl x) (S ?VDiff) \<gamma>"
                   using \<gamma>_cond1 \<gamma>_cond2
                   using vdiff_state_satisfies_formula fol_equal_everywhere_but_def fol_states_agree_on_def
                   by fastforce          
@@ -374,12 +374,12 @@ begin
             assume vdiff_state_satisfies_formula: "(dyn_eval (\<bbbA> x . F) (S ?VDiffRelevant))"
             show "( dyn_eval (\<bbbA> x . F) (S ?VDiff))"
             proof (simp, rule ccontr, simp)
-              assume cex_state: "\<exists>\<omega>'. fol_equal_everywhere_but x (S (fol_state_var_diff_set \<mu> \<omega>)) \<omega>' \<and> \<not> dyn_eval F \<omega>'"
-              obtain \<sigma> where sigma_constraints: "fol_equal_everywhere_but x (S (fol_state_var_diff_set \<mu> \<omega>)) \<sigma> \<and>  \<not> dyn_eval F \<sigma>"
+              assume cex_state: "\<exists>\<omega>'. fol_equal_everywhere_but (Inl x) (S (fol_state_var_diff_set \<mu> \<omega>)) \<omega>' \<and> \<not> dyn_eval F \<omega>'"
+              obtain \<sigma> where sigma_constraints: "fol_equal_everywhere_but (Inl x) (S (fol_state_var_diff_set \<mu> \<omega>)) \<sigma> \<and>  \<not> dyn_eval F \<sigma>"
                 using cex_state by blast
               
-              obtain \<gamma> where \<gamma>_cond1: "(state_eval \<gamma>) x = (state_eval \<sigma>) x"
-                         and \<gamma>_cond2: "\<forall> v . v \<noteq> x \<longrightarrow> (state_eval \<gamma>) v = (state_eval (S ?VDiffRelevant)) v"
+              obtain \<gamma> where \<gamma>_cond1: "(state_eval \<gamma>) (Inl x) = (state_eval \<sigma>) (Inl x)"
+                         and \<gamma>_cond2: "\<forall> v . v \<noteq> (Inl x) \<longrightarrow> (state_eval \<gamma>) v = (state_eval (S ?VDiffRelevant)) v"
                 using state_space_convexity
                 by (meson emptyE insert_iff)
       
@@ -392,7 +392,7 @@ begin
       
               have gamma_sat: "dyn_eval F \<gamma>"
               proof -
-                have "fol_equal_everywhere_but x (S ?VDiffRelevant) \<gamma>"
+                have "fol_equal_everywhere_but (Inl x) (S ?VDiffRelevant) \<gamma>"
                   using \<gamma>_cond1 \<gamma>_cond2
                   using vdiff_state_satisfies_formula fol_equal_everywhere_but_def fol_states_agree_on_def
                   by fastforce          
@@ -419,26 +419,27 @@ begin
         have eq3: "(dyn_eval (\<bbbA> x . F) (S ?VDiffRelevant)) = ( dyn_eval (\<bbbA> x . F) (S ?VDiff))"
           using dir1 dir2 by blast
     
-        have relevantAlmostEmpty: "?VDiffRelevant \<subseteq> {x}"
+        have relevantAlmostEmpty: "?VDiffRelevant \<subseteq> {(Inl x)}"
           using omega_is_mirror
           unfolding dyn_FV_mirror_state_def fol_fv_syn_mirror_state_def fol_states_agree_on_def
           unfolding fol_state_var_diff_set_filter_def dyn_FV.simps
-          using Collect_mono by fastforce
+          using Collect_mono
+          by (smt (verit) insert_iff mem_Collect_eq subsetI)
 
-        then have "fol_equal_everywhere_but x (S {x}) (S ?VDiffRelevant)"
+        then have "fol_equal_everywhere_but (Inl x) (S {(Inl x)}) (S ?VDiffRelevant)"
           using S_cond
           unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
           by auto
     
-        then have eq41: "dyn_eval (\<bbbA> x . F) (S {x}) = dyn_eval (\<bbbA> x . F) (S ?VDiffRelevant)"
+        then have eq41: "dyn_eval (\<bbbA> x . F) (S {(Inl x)}) = dyn_eval (\<bbbA> x . F) (S ?VDiffRelevant)"
           unfolding dyn_eval.simps
           using S_cond
           unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
           by simp
 
-        have "fol_equal_everywhere_but x (S {}) (S {x})"
+        have "fol_equal_everywhere_but (Inl x) (S {}) (S {(Inl x)})"
           by (smt (verit, ccfv_threshold) S_cond \<open>state_eval \<mu> = state_eval (S {})\<close> fol_equal_everywhere_but_def fol_states_agree_on_def singletonD)
-        then have eq42: "dyn_eval (\<bbbA> x . F) (S {}) = dyn_eval (\<bbbA> x . F) (S {x})"
+        then have eq42: "dyn_eval (\<bbbA> x . F) (S {}) = dyn_eval (\<bbbA> x . F) (S {(Inl x)})"
           unfolding dyn_eval.simps
           using S_cond
           unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
@@ -643,7 +644,7 @@ begin
       using synFV_finite
       using rev_finite_subset by blast
 
-    obtain S :: "'var set \<Rightarrow> 'state"
+    obtain S :: " ('var + 'qfvar) set \<Rightarrow> 'state"
             where S_cond: "\<forall> V. \<forall> w . (((state_eval (S V)) w) = (if w \<in> V then ((state_eval \<nu>) w) else ((state_eval \<mu>) w)))"
             using state_space_convexity
             by metis
@@ -770,7 +771,7 @@ begin
   \<close>
 
   lemma dyn_fv_sem_coincidence_smallest:
-    fixes FVTest :: "('atom, 'var, 'prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool"
+    fixes FVTest :: "('atom, 'var, 'prog) dyn_formula \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
     assumes FVTest_finite: "finite (Collect (FVTest F))"
     assumes semFVSmaller: "card (Collect (FVTest F)) < card (Collect (dyn_fv_sem F))"
     shows "\<exists> \<mu> \<omega> . ( (fol_states_agree_on (FVTest F) \<mu> \<omega>) \<and> dyn_eval F \<mu> \<noteq> dyn_eval F \<omega>)"
@@ -810,7 +811,7 @@ begin
       
     then have "\<exists> \<mu> \<omega> . ( (fol_states_agree_on (FVTest F) \<mu> \<omega>) \<and> dyn_eval F \<mu> \<noteq> dyn_eval F \<omega>)"
     proof -
-      obtain w :: 'var where w_condition: "\<not>(FVTest F w) \<and> (dyn_fv_sem F w)" using semFVSubset by blast
+      obtain w ::  "('var + 'qfvar)" where w_condition: "\<not>(FVTest F w) \<and> (dyn_fv_sem F w)" using semFVSubset by blast
     
       obtain \<mu> \<omega> where agree: "fol_states_agree_on (\<lambda>wa. wa \<noteq> w) \<mu> \<omega>"
                  and eval_diff: "dyn_eval F \<mu> = (\<not> dyn_eval F \<omega>)"
@@ -845,8 +846,8 @@ begin
       and \<omega>1 :: "'state"
       and \<omega>2 :: "'state"
       and \<pi> :: "'prog"
-      and relevant_vars :: "'var \<Rightarrow> bool"
-      and eq_vars :: "'var \<Rightarrow> bool"
+      and relevant_vars :: " ('var + 'qfvar) \<Rightarrow> bool"
+      and eq_vars :: " ('var + 'qfvar) \<Rightarrow> bool"
     assumes mu_omega_transition: "prog_eval \<pi> \<mu>1 \<omega>1"
         and prog_fv_equal: "fol_states_agree_on eq_vars \<mu>1 \<mu>2"
         and nonrelevant_equal: "fol_states_agree_on (\<lambda> v . \<not> relevant_vars v) \<mu>1 \<mu>2"
@@ -868,7 +869,7 @@ begin
       unfolding fol_state_var_diff_set_def
       by (metis (mono_tags, lifting) Collect_mono_iff finite_subset)
 
-    obtain S :: "'var set \<Rightarrow> 'state"
+    obtain S :: " ('var + 'qfvar) set \<Rightarrow> 'state"
             where S_cond: "\<forall> V. \<forall> w . (((state_eval (S V)) w) = (if w \<in> V then ((state_eval \<mu>2) w) else ((state_eval \<mu>1) w)))"
             using state_space_convexity
             by metis
@@ -981,7 +982,7 @@ begin
 
   lemma dyn_prog_fv_sem_coincidence_smallest:
     fixes \<pi> :: "'prog"
-      and eq_vars :: "'var \<Rightarrow> bool"
+      and eq_vars :: " ('var + 'qfvar) \<Rightarrow> bool"
     assumes eq_finite: "finite (Collect eq_vars)"
         and eq_smaller: "card (Collect eq_vars ) < card (Collect (dyn_prog_fv_sem \<pi>))"
       shows "\<exists> \<mu>1 \<mu>2 \<omega>1 V . (
@@ -1069,7 +1070,7 @@ begin
   qed
 
 lemma dyn_prog_bv_sem_bounded_smallest1:
-  fixes bv_smaller :: "'var \<Rightarrow> bool"
+  fixes bv_smaller :: "('var + 'qfvar) \<Rightarrow> bool"
     and \<pi> :: "'prog"
   assumes "(((Collect bv_smaller) \<inter> (Collect (dyn_prog_bv_sem \<pi>))) \<noteq> (Collect (dyn_prog_bv_sem \<pi>)))"
     shows "\<exists> \<mu> \<omega>. (prog_eval \<pi> \<mu> \<omega>) \<and> \<not>fol_states_agree_on (\<lambda> v . \<not> bv_smaller v) \<mu> \<omega>"
@@ -1087,7 +1088,7 @@ proof -
 qed
 
 lemma dyn_prog_bv_sem_bounded_smallest2:
-  fixes bv_smaller :: "'var \<Rightarrow> bool"
+  fixes bv_smaller :: "('var + 'qfvar) \<Rightarrow> bool"
     and \<pi> :: "'prog"
   assumes "finite (Collect bv_smaller)"
       and "finite (Collect (dyn_prog_bv_sem \<pi>))"
@@ -1140,17 +1141,17 @@ lemma dyn_hilbert_axiom_6: "\<Turnstile>[dyn_eval] (\<bbbA> v . (\<phi> \<Rright
 
 lemma dyn_hilbert_axiom_7:
   fixes \<phi> :: "('atom, 'var, 'prog) dyn_formula"
-  assumes fv_assumption: "\<not> dyn_fv_sem \<phi> v"
+  assumes fv_assumption: "\<not> dyn_fv_sem \<phi> (Inl v)"
   shows "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<bbbA> v . \<phi>"
 proof (simp, intro allI, intro impI)
   fix \<mu>
   assume phi_satisfied: "dyn_eval \<phi> \<mu>"
   
-  show "\<forall>\<omega>. fol_equal_everywhere_but v \<mu> \<omega> \<longrightarrow> dyn_eval \<phi> \<omega>"
+  show "\<forall>\<omega>. fol_equal_everywhere_but (Inl v) \<mu> \<omega> \<longrightarrow> dyn_eval \<phi> \<omega>"
   proof (rule ccontr, simp)
-    assume "\<exists>\<omega>. fol_equal_everywhere_but v \<mu> \<omega> \<and> \<not> dyn_eval \<phi> \<omega>"
+    assume "\<exists>\<omega>. fol_equal_everywhere_but (Inl v) \<mu> \<omega> \<and> \<not> dyn_eval \<phi> \<omega>"
 
-    then obtain \<omega> where almost_equal: "fol_equal_everywhere_but v \<mu> \<omega>"
+    then obtain \<omega> where almost_equal: "fol_equal_everywhere_but (Inl v) \<mu> \<omega>"
                     and not_satisfied: "\<not> dyn_eval \<phi> \<omega>" by blast
 
     have "dyn_eval \<phi> \<omega>"

@@ -29,10 +29,10 @@ locale KleeneDynLog =
   regular_lifting atom_eval atom_fv_syn state_eval prog_eval
       dyn_prog_FV
   for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
-    and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
-    and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
+    and atom_fv_syn :: "'atom \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
+    and state_eval :: "'state \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> 'val"
     and prog_eval :: "'prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
-    and dyn_prog_FV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
+    and dyn_prog_FV :: "'prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
   +
   assumes strong_extensionality:
     "\<forall> \<pi> \<mu> \<omega> \<mu>' \<omega>' . ((\<forall> v. (((state_eval \<mu>) v = (state_eval \<omega>) v) \<and> ((state_eval \<mu>') v = (state_eval \<omega>') v))) \<longrightarrow> prog_eval \<pi> \<mu> \<mu>' = prog_eval \<pi> \<omega> \<omega>')"

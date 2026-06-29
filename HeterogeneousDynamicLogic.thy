@@ -25,24 +25,28 @@ datatype ('at1,'at2,'atc) het_atom =
 datatype ('pr1,'pr2) het_prog =
   PROG1 "'pr1" | PROG2 "'pr2"
 
-definition common_atom_eval :: "('st1\<Rightarrow>'vr1\<Rightarrow>'vl1) \<Rightarrow> ('st2\<Rightarrow>'vr2\<Rightarrow>'vl2) \<Rightarrow> ('st1 \<times> 'st2) \<Rightarrow> ('vr1+'vr2) \<Rightarrow> ('vl1+'vl2)"
-  where "common_atom_eval eval1 eval2 \<mu> = (map_sum (eval1 (fst \<mu>)) (eval2 (snd \<mu>)))"
+fun common_atom_eval :: "('st1\<Rightarrow>('vr1+'qfvr1)\<Rightarrow>'vl1) \<Rightarrow> ('st2\<Rightarrow>('vr2+'qfvr2)\<Rightarrow>'vl2) \<Rightarrow> ('st1 \<times> 'st2) \<Rightarrow> (('vr1+'vr2)+('qfvr1+'qfvr2)) \<Rightarrow> ('vl1+'vl2)"
+  where
+    "common_atom_eval eval1 eval2 \<mu> (Inl (Inl v)) = (Inl (eval1 (fst \<mu>) (Inl v)))"
+  | "common_atom_eval eval1 eval2 \<mu> (Inl (Inr v)) = (Inr (eval2 (snd \<mu>) (Inl v)))"
+  | "common_atom_eval eval1 eval2 \<mu> (Inr (Inl v)) = (Inl (eval1 (fst \<mu>) (Inr v)))"
+  | "common_atom_eval eval1 eval2 \<mu> (Inr (Inr v)) = (Inr (eval2 (snd \<mu>) (Inr v)))"
 
 locale HeterogeneousDynLog =
 fixes atom_eval1 :: "'atom1 \<Rightarrow> 'state1 \<Rightarrow> bool"
-  and atom_fv_syn1 :: "'atom1 \<Rightarrow> 'var1 \<Rightarrow> bool"
-  and state_eval1 :: "'state1 \<Rightarrow> 'var1 \<Rightarrow> 'val1"
+  and atom_fv_syn1 :: "'atom1 \<Rightarrow> ('var1 + 'qfvar1) \<Rightarrow> bool"
+  and state_eval1 :: "'state1 \<Rightarrow> ('var1 + 'qfvar1) \<Rightarrow> 'val1"
   and prog_eval1 :: "'prog1 \<Rightarrow> 'state1 \<Rightarrow> 'state1 \<Rightarrow> bool"
-  and dyn_prog_FV1 :: "'prog1 \<Rightarrow> 'var1 \<Rightarrow> bool"
+  and dyn_prog_FV1 :: "'prog1 \<Rightarrow> ('var1 + 'qfvar1) \<Rightarrow> bool"
 
 fixes atom_eval2 :: "'atom2 \<Rightarrow> 'state2 \<Rightarrow> bool"
-  and atom_fv_syn2 :: "'atom2 \<Rightarrow> 'var2 \<Rightarrow> bool"
-  and state_eval2 :: "'state2 \<Rightarrow> 'var2 \<Rightarrow> 'val2"
+  and atom_fv_syn2 :: "'atom2 \<Rightarrow> ('var2 + 'qfvar2) \<Rightarrow> bool"
+  and state_eval2 :: "'state2 \<Rightarrow> ('var2 + 'qfvar2) \<Rightarrow> 'val2"
   and prog_eval2 :: "'prog2 \<Rightarrow> 'state2 \<Rightarrow> 'state2 \<Rightarrow> bool"
-  and dyn_prog_FV2 :: "'prog2 \<Rightarrow> 'var2 \<Rightarrow> bool"
+  and dyn_prog_FV2 :: "'prog2 \<Rightarrow> ('var2 + 'qfvar2) \<Rightarrow> bool"
 
 fixes atom_eval_comm :: "'atom_comm \<Rightarrow> ('state1 \<times> 'state2) \<Rightarrow> bool"
-  and atom_fv_syn_comm :: "'atom_comm \<Rightarrow> ('var1 + 'var2) \<Rightarrow> bool"
+  and atom_fv_syn_comm :: "'atom_comm \<Rightarrow> (('var1 + 'var2)+('qfvar1 + 'qfvar2)) \<Rightarrow> bool"
 
   assumes dynamic_theory1: "dynamic_theory atom_eval1 atom_fv_syn1 state_eval1 prog_eval1 dyn_prog_FV1"
   assumes dynamic_theory2: "dynamic_theory atom_eval2 atom_fv_syn2 state_eval2 prog_eval2 dyn_prog_FV2"
@@ -69,19 +73,21 @@ fun het_atom_eval :: "('atom1,'atom2,'atom_comm) het_atom \<Rightarrow> ('state1
   | "het_atom_eval (ATOM2 a) \<mu> = atom_eval2 a (snd \<mu>)"
   | "het_atom_eval (ATOMC a) \<mu> = atom_eval_comm a \<mu>"
 
-fun het_atom_fv_syn :: "('atom1,'atom2,'atom_comm) het_atom \<Rightarrow> ('var1 + 'var2) \<Rightarrow> bool"
+fun het_atom_fv_syn :: "('atom1,'atom2,'atom_comm) het_atom \<Rightarrow> (('var1 + 'var2) + ('qfvar1 + 'qfvar2)) \<Rightarrow> bool"
   where
-    "het_atom_fv_syn (ATOM1 a) (Inl v) = atom_fv_syn1 a v"
-  | "het_atom_fv_syn (ATOM1 a) (Inr v) = False"
-  | "het_atom_fv_syn (ATOM2 a) (Inl v) = False"
-  | "het_atom_fv_syn (ATOM2 a) (Inr v) = atom_fv_syn2 a v"
+    "het_atom_fv_syn (ATOM1 a) (Inl (Inl v)) = atom_fv_syn1 a (Inl v)"
+  | "het_atom_fv_syn (ATOM1 a) (Inr (Inl v)) = atom_fv_syn1 a (Inr v)"
+  | "het_atom_fv_syn (ATOM1 a) v = False"
+  | "het_atom_fv_syn (ATOM2 a) (Inl (Inr v)) = atom_fv_syn2 a (Inl v)"
+  | "het_atom_fv_syn (ATOM2 a) (Inr (Inr v)) = atom_fv_syn2 a (Inr v)"
+  | "het_atom_fv_syn (ATOM2 a) v = False"
   | "het_atom_fv_syn (ATOMC a) v = atom_fv_syn_comm a v"
 
 text\<open>
 Similarly, we define the evaluation of variables which are mapped back to their
 respective state space:\<close>
 
-definition het_state_eval :: "('state1 \<times> 'state2) \<Rightarrow> ('var1+'var2) \<Rightarrow> ('val1+'val2)"
+definition het_state_eval :: "('state1 \<times> 'state2) \<Rightarrow> (('var1 + 'var2) + ('qfvar1 + 'qfvar2)) \<Rightarrow> ('val1+'val2)"
   where [simp]: "het_state_eval = (common_atom_eval state_eval1 state_eval2)"
 
 text\<open>
@@ -95,12 +101,14 @@ fun het_prog_eval :: "('prog1,'prog2) het_prog \<Rightarrow> ('state1 \<times> '
     "het_prog_eval (PROG1 \<pi>) (\<mu>1,\<mu>2) (\<omega>1,\<omega>2) = ((prog_eval1 \<pi> \<mu>1 \<omega>1) \<and> ((state_eval2 \<mu>2) = (state_eval2 \<omega>2)))"
   | "het_prog_eval (PROG2 \<pi>) (\<mu>1,\<mu>2) (\<omega>1,\<omega>2) = (((state_eval1 \<mu>1) = (state_eval1 \<omega>1)) \<and> (prog_eval2 \<pi> \<mu>2 \<omega>2))"
 
-fun het_dyn_prog_FV :: "('prog1,'prog2) het_prog \<Rightarrow>  ('var1+'var2) \<Rightarrow> bool"
+fun het_dyn_prog_FV :: "('prog1,'prog2) het_prog \<Rightarrow>  (('var1 + 'var2) + ('qfvar1 + 'qfvar2)) \<Rightarrow> bool"
   where
-    "het_dyn_prog_FV (PROG1 \<pi>) (Inl v) = dyn_prog_FV1 \<pi> v"
-  | "het_dyn_prog_FV (PROG1 \<pi>) (Inr v) = False"
-  | "het_dyn_prog_FV (PROG2 \<pi>) (Inl v) = False"
-  | "het_dyn_prog_FV (PROG2 \<pi>) (Inr v) = dyn_prog_FV2 \<pi> v"
+    "het_dyn_prog_FV (PROG1 \<pi>) (Inl (Inl v)) = dyn_prog_FV1 \<pi> (Inl v)"
+  | "het_dyn_prog_FV (PROG1 \<pi>) (Inr (Inl v)) = dyn_prog_FV1 \<pi> (Inr v)"
+  | "het_dyn_prog_FV (PROG1 \<pi>) v = False"
+  | "het_dyn_prog_FV (PROG2 \<pi>) (Inl (Inr v)) = dyn_prog_FV2 \<pi> (Inl v)"
+  | "het_dyn_prog_FV (PROG2 \<pi>) (Inr (Inr v)) = dyn_prog_FV2 \<pi> (Inr v)"
+  | "het_dyn_prog_FV (PROG2 \<pi>) v = False"
 
 fun het_dyn_prog_BV :: "('prog1 \<Rightarrow> 'var1 \<Rightarrow> bool) \<Rightarrow> ('prog2 \<Rightarrow> 'var2 \<Rightarrow> bool) \<Rightarrow>('prog1,'prog2) het_prog \<Rightarrow>  ('var1+'var2) \<Rightarrow> bool"
   where
@@ -124,20 +132,43 @@ proof
   proof -
     fix a
 
-    let ?set_split = "(\<lambda> a . ({w . \<exists> v . (w = (Inl v) \<and> (het_atom_fv_syn a (Inl v)))} \<union> {w . \<exists> v . (w = (Inr v) \<and> (het_atom_fv_syn a (Inr v)))}))"
+    let ?set_split = "(\<lambda> a . (
+          {w . (\<exists> v . w = (Inl (Inl v)) \<and> (het_atom_fv_syn a (Inl (Inl v))))} \<union>
+          {w . (\<exists> v . w = (Inl (Inr v)) \<and> (het_atom_fv_syn a (Inl (Inr v))))} \<union>
+          {w . (\<exists> v . w = (Inr (Inl v)) \<and> (het_atom_fv_syn a (Inr (Inl v))))} \<union>
+          {w . (\<exists> v . w = (Inr (Inr v)) \<and> (het_atom_fv_syn a (Inr (Inr v))))}))"
 
     have split_superset: "\<And> b . {v. het_atom_fv_syn b v} \<subseteq> ?set_split b"
-      using het_atom_fv_syn.elims(2)
-      proof -
-        fix b
-        obtain vv :: "'var1 + 'var2 \<Rightarrow> 'var2" and vva :: "'var1 + 'var2 \<Rightarrow> 'var1" where
-          "\<forall>s. s = Inr (vv s) \<or> s = Inl (vva s)"
-          by (metis (no_types) obj_sumE)
-        then have "Collect (het_atom_fv_syn b) \<subseteq> {s. (\<exists>v. s = Inr v \<and> het_atom_fv_syn b s) \<or> (\<exists>v. s = Inl v \<and> het_atom_fv_syn b s)}"
-          by blast
-        then show "{v. het_atom_fv_syn b v} \<subseteq> ?set_split b"
-          by blast
+    proof auto
+      fix b
+      fix x
+      show "het_atom_fv_syn b x \<Longrightarrow>
+           \<forall>v. x = Inr (Inr v) \<longrightarrow> \<not> het_atom_fv_syn b (Inr (Inr v)) \<Longrightarrow>
+           \<forall>v. x = Inr (Inl v) \<longrightarrow> \<not> het_atom_fv_syn b (Inr (Inl v)) \<Longrightarrow>
+           \<forall>v. x = Inl (Inr v) \<longrightarrow> \<not> het_atom_fv_syn b (Inl (Inr v)) \<Longrightarrow>
+           \<exists>v. x = Inl (Inl v) \<and> het_atom_fv_syn b (Inl (Inl v))"
+      proof (induct x)
+        case (Inl a)
+        then show ?case
+        proof (induct a)
+          case (Inl a)
+          then show ?case by simp
+        next
+          case (Inr b)
+          then show ?case by simp
+        qed
+      next
+        case (Inr b)
+        then show ?case
+        proof (induct b)
+          case (Inl a)
+          then show ?case by simp
+        next
+          case (Inr b)
+          then show ?case by simp
+        qed
       qed
+    qed
 
     show "finite (Collect (het_atom_fv_syn a))"
     proof (induct a)
@@ -147,7 +178,8 @@ proof
         have "finite (?set_split (ATOM1 x))"
           unfolding het_atom_fv_syn.simps
           using dyn_log_1.fv_finite[of x]
-          by simp
+          apply simp
+    (*TODO: This gets really ugly... Is there a better approach ? *)
         thus "finite {a. het_atom_fv_syn (ATOM1 x) a}"
           using split_superset
           by (meson rev_finite_subset)

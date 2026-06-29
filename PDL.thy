@@ -22,6 +22,8 @@ theory PDL
     KATRewriting
 begin
 
+(* TODO: Add unused quantified variable type *)
+
 (* PDL does not have first-order variables *)
 datatype pdl_atom_var = singleton_var
 

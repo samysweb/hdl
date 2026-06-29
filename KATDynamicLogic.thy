@@ -29,10 +29,10 @@ notation LOOP ("(_)*" 60)
 locale regular_lifting =
     dynamic_theory atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
     for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
-    and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
-    and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
+    and atom_fv_syn :: "'atom \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
+    and state_eval :: "'state \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> 'val"
     and prog_eval :: "'prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
-    and dyn_prog_FV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
+    and dyn_prog_FV :: "'prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
 begin
 
 subsubsection\<open>Semantics\<close>
@@ -227,7 +227,7 @@ variables:
 \<close>
 
 
-fun full_prog_fv_syn :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Rightarrow> bool"
+fun full_prog_fv_syn :: "('atom,'var,'prog) kat_prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
   where
     "full_prog_fv_syn (KATPROG \<pi>) v = dyn_prog_FV \<pi> v"
   | "full_prog_fv_syn (CHECK \<phi>) v = fol_fv_syn \<phi> v"
@@ -235,15 +235,15 @@ fun full_prog_fv_syn :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Righta
   | "full_prog_fv_syn (CHOICE \<pi>1 \<pi>2) v = ((full_prog_fv_syn \<pi>1 v) \<or> (full_prog_fv_syn \<pi>2 v))"
   | "full_prog_fv_syn (LOOP \<pi>) v = (full_prog_fv_syn \<pi> v)"
 
-fun full_dyn_FV_fml :: "('atom,'var,('atom, 'var, 'prog) kat_prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool"
+fun full_dyn_FV_fml :: "('atom,'var,('atom, 'var, 'prog) kat_prog) dyn_formula \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
   where
     "full_dyn_FV_fml (FOL \<phi>) v = dyn_FV (FOL \<phi>) v"
   | "full_dyn_FV_fml (AND \<phi> \<psi>) v = ((full_dyn_FV_fml \<phi> v) \<or> (full_dyn_FV_fml \<psi> v))"
   | "full_dyn_FV_fml (NOT \<phi>) v = (full_dyn_FV_fml \<phi> v)"
-  | "full_dyn_FV_fml (FOL_ALL v \<phi>) w = (if (v=w) then False else (full_dyn_FV_fml \<phi> v))"
+  | "full_dyn_FV_fml (FOL_ALL v \<phi>) w = (if ((Inl v)=w) then False else (full_dyn_FV_fml \<phi> w))"
   | "full_dyn_FV_fml (BOX \<pi> \<phi>) v = ((full_prog_fv_syn \<pi> v) \<or> (full_dyn_FV_fml \<phi> v))"
 
-fun full_dyn_prog_BV :: " ('prog \<Rightarrow> 'var \<Rightarrow> bool) \<Rightarrow>('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Rightarrow> bool"
+fun full_dyn_prog_BV :: " ('prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool) \<Rightarrow>('atom,'var,'prog) kat_prog \<Rightarrow>  ('var + 'qfvar) \<Rightarrow> bool"
   where
     "full_dyn_prog_BV BV (KATPROG \<pi>) v = BV \<pi> v"
   | "full_dyn_prog_BV BV (CHECK \<phi>) v = False"
