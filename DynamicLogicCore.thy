@@ -1138,6 +1138,19 @@ lemma dyn_hilbert_axiom_6: "\<Turnstile>[dyn_eval] (\<bbbA> v . (\<phi> \<Rright
   apply simp
   by blast
 
+lemma dyn_prop_axiom_rosser1: "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<phi> and \<phi>)"
+  by simp
+
+lemma dyn_prop_axiom_rosser2: "\<Turnstile>[dyn_eval] (\<phi> and \<psi>) \<Rrightarrow> \<phi>"
+  by simp
+
+lemma dyn_prop_axiom_rosser3: "\<Turnstile>[dyn_eval] (\<phi> \<Rrightarrow> \<psi>) \<Rrightarrow> (\<rceil>(\<psi> and \<xi>) \<Rrightarrow> \<rceil>(\<xi> and \<phi>))"
+  by auto
+
+lemma dyn_fol_axiom_univ_elim: "\<Turnstile>[dyn_eval] (\<bbbA> v . \<phi>) \<Rrightarrow> \<phi>"
+  apply auto
+  using fol_equal_everywhere_but_def fol_states_agree_on_def by blast
+
 lemma dyn_hilbert_axiom_7:
   fixes \<phi> :: "('atom, 'var, 'prog) dyn_formula"
   assumes fv_assumption: "\<not> dyn_fv_sem \<phi> v"
