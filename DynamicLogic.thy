@@ -241,4 +241,36 @@ qed
 
 end
 
+
+
+locale dynamic_theory_eq =
+    dynamic_theory atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
+    for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
+    and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
+    and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
+    and prog_eval :: "'prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
+    and dyn_prog_FV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
++
+fixes eqPred :: "'var \<Rightarrow> 'var \<Rightarrow> ('atom, 'var) fol_formula"
+(*assumes infinite_nat_vars: "\<not> (finite (nat_assignable_vars state_eval val2nat))"*)
+assumes eqPred_sound: "\<forall> v1 v2 .
+          (v1 \<noteq> v2)
+          \<longrightarrow> (\<forall> \<mu> .
+                dyn_eval (FOL (eqPred v1 v2)) \<mu>
+                \<longleftrightarrow>
+                ((state_eval \<mu> v2) = (state_eval \<mu> v1))
+              )"
+begin
+lemma eq_all_axiom:
+  fixes v :: "'var"
+  and w :: "'var"
+  and \<phi> :: "('atom,'var,'prog) dyn_formula"
+assumes "v \<noteq> w"
+shows "\<Turnstile>[dyn_eval] ((FOL (eqPred v w)) \<Rrightarrow> (\<phi> \<Rrightarrow>(\<bbbA> v . ((FOL (eqPred v w)) \<Rrightarrow> \<phi>))))"
+  apply (simp add: fol_equal_everywhere_but_def fol_states_agree_on_def)
+  using eqPred_sound assms
+  by (metis dyn_differing_state_eval_due_to_vars dyn_eval.simps(1))
+
+end
+
 end

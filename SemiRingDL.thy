@@ -339,6 +339,21 @@ interpretation kleene_dyn_log:
   KleeneDynLog "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_havoc.full_prog_eval semiring_dl_havoc.full_prog_FV
   apply standard
     unfolding state_id_def unfolding id_def
-  by presburger
+    by presburger
+
+fun semiring_eq :: "semiringfol_var \<Rightarrow> semiringfol_var \<Rightarrow> (('semiringfol_val :: ordered_semiring) semiringfol_atom,semiringfol_var) fol_formula"
+  where "semiring_eq v w = (ATOM (Eq (Var v) (Var w)))"
+
+interpretation semiring_dl_eq:
+  dynamic_theory_eq semiringfol_AtomEval semiringfol_AtomFVSyn state_id semiring_prog_eval semiring_prog_fv semiring_eq
+  apply standard
+  unfolding semiring_dl.dyn_eval.simps
+  unfolding semiring_eq.simps
+  unfolding semiring_folCore.fol_eval.simps
+  unfolding semiringfol_AtomEval.simps
+  unfolding semiringfol_TermEval.simps
+  unfolding state_id_def
+  by fastforce
+
 
 end
