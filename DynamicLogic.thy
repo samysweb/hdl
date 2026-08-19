@@ -10,7 +10,7 @@ begin
 lemma dyn_axiom_V:
   fixes \<phi> :: "('atom,'var,'prog) dyn_formula"
   fixes \<pi> :: "'prog"
-  assumes "((Collect (dyn_FV \<phi>)) \<inter> (Collect (dyn_prog_bv_sem \<pi>))) = {}"
+  assumes "((Collect (dyn_fv_sem \<phi>)) \<inter> (Collect (dyn_prog_bv_sem \<pi>))) = {}"
   shows "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>\<phi>"
   unfolding theory_valid_def
   unfolding IMP_def
@@ -55,7 +55,7 @@ lemma dyn_axiom_B:
     shows "\<Turnstile>[dyn_eval] (\<bbbA> v . \<lbrakk>\<pi>\<rbrakk>\<phi>) \<Lleftarrow>\<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk> (\<bbbA> v . \<phi>))"
 proof -
   have dir1: "\<Turnstile>[dyn_eval] (\<bbbA> v . \<lbrakk>\<pi>\<rbrakk>\<phi>) \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk> (\<bbbA> v . \<phi>))"
-  proof (simp, intro allI)
+  proof ((simp add: dyn_sem), intro allI)
     fix \<mu>
     have not_bv: "\<not> dyn_prog_bv_sem \<pi> v"
       using assms
@@ -210,7 +210,8 @@ proof -
     have "\<Turnstile>[dyn_eval] (\<bbbA> v . \<phi>) \<Rrightarrow> \<phi>"
       unfolding theory_valid_def
       unfolding dyn_eval.simps
-      using fol_equal_everywhere_but_def fol_states_agree_on_def by force
+      using fol_equal_everywhere_but_def fol_states_agree_on_def
+      by (auto simp add: dyn_sem)
 
     then have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> ((\<bbbA> v . \<phi>) \<Rrightarrow> \<phi>)"
       using dyn_axiom_G
@@ -222,7 +223,7 @@ proof -
       by blast
 
     then have "\<Turnstile>[dyn_eval] \<bbbA> v . ((\<lbrakk>\<pi>\<rbrakk> (\<bbbA> v . \<phi>)) \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk>\<phi>))"
-      using dyn_hilbert_axiom_G
+      using dyn_axiom_A
       by blast
 
     then have all_distributed: "\<Turnstile>[dyn_eval] ((\<bbbA> v . \<lbrakk>\<pi>\<rbrakk> (\<bbbA> v . \<phi>)) \<Rrightarrow> (\<bbbA> v . \<lbrakk>\<pi>\<rbrakk>\<phi>))"
@@ -236,7 +237,7 @@ proof -
 
   show ?thesis
     using dir1 dir2
-    by simp
+    by (auto simp add: dyn_sem)
 qed
 
 end
@@ -267,9 +268,11 @@ lemma eq_all_axiom:
   and \<phi> :: "('atom,'var,'prog) dyn_formula"
 assumes "v \<noteq> w"
 shows "\<Turnstile>[dyn_eval] ((FOL (eqPred v w)) \<Rrightarrow> (\<phi> \<Rrightarrow>(\<bbbA> v . ((FOL (eqPred v w)) \<Rrightarrow> \<phi>))))"
-  apply (simp add: fol_equal_everywhere_but_def fol_states_agree_on_def)
   using eqPred_sound assms
-  by (metis dyn_differing_state_eval_due_to_vars dyn_eval.simps(1))
+  apply (auto simp add: dyn_sem)
+  by (smt (verit, ccfv_SIG) dyn_differing_state_eval_due_to_vars dynamic_theory_def
+      dynamic_theory_eq_axioms dynamic_theory_eq_def folCore.fol_equal_everywhere_but_def
+      fol_states_agree_on_def)
 
 end
 

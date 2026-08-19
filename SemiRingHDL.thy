@@ -134,10 +134,10 @@ proof
           qed
       next
         case (Add t1 t2)
-        then show ?case by auto
+        then show ?case by (auto simp add: dyn_sem)
       next
         case (Mul t1 t2)
-        then show ?case by auto
+        then show ?case by (auto simp add: dyn_sem)
       qed
     qed
 
@@ -147,11 +147,11 @@ proof
   proof (induct a)
     case (Eq x1 x2)
     then show ?case
-      by simp
+      by (auto simp add: dyn_sem)
   next
     case (Less x1 x2)
     then show ?case
-      by simp
+      by (auto simp add: dyn_sem)
   qed
 
   show "\<forall>\<omega> \<mu> V.
@@ -267,7 +267,7 @@ proof -
     unfolding semiring_hdl.hdl_havoc.havoc_dl.dyn_eval.simps
     unfolding semiring_hdl.het_fol.fol_eval.simps
     unfolding FOLTRUE_def
-    using semiring_hdl.het_fol.fol_hilbert_axiom_1 by auto
+    using semiring_hdl.het_fol.fol_hilbert_axiom_1 by (auto simp add: dyn_sem)
   thus "\<And> a b . \<not> (semiring_hdl.hdl_kat.full_prog_eval ((? (folnot FOLTRUE));\<alpha>) a b)"
     using full_hdl_rewriting.kat_rewriting.kat_rule10[of \<alpha>]
     using semiring_hdl.hdl_kat.kat_dl.prog_eval_cong[of "(? folnot FOLTRUE;\<alpha>)"

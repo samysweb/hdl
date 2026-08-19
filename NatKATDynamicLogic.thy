@@ -112,19 +112,19 @@ lemma dyn_axiom_C:
     (\<bbbA> v . (
       \<phi>
       \<Rrightarrow>
-      (\<langle> \<pi>* \<rangle> (\<bbbE> v.
+      (\<langle> (\<pi>*) \<rangle> (\<bbbE> v.
       ( (\<rceil>(FOL (positive_relation v))) and \<phi>)
       ))
     ))
   )"
   unfolding theory_valid_def
-  apply simp
+  apply (intro allI)
+  subgoal for \<mu>
+  unfolding kat_dl.IMP_def
   unfolding kat_dl.dyn_eval.simps
+  apply simp
   using assms
-proof (simp, intro allI)
-  fix \<pi>
-  fix v w
-  fix \<mu>
+proof -
   assume v_assms: "\<not> full_prog_fv_syn \<pi> v \<and> \<not> kat_dl.dyn_prog_bv_sem \<pi> v"
   then have strong_v_assms: "\<not> full_prog_fv_syn (\<pi>*) v \<and> \<not> kat_dl.dyn_prog_bv_sem (\<pi>*) v"
     unfolding full_prog_fv_syn.simps
@@ -197,7 +197,7 @@ proof (simp, intro allI)
       )) \<mu> \<Longrightarrow> kat_dl.dyn_eval (\<bbbA> v . (
       \<phi>
       \<Rrightarrow>
-      (\<langle> \<pi>* \<rangle> (\<bbbE> v.
+      (\<langle> (\<pi>*) \<rangle> (\<bbbE> v.
       ( (\<rceil>(FOL (positive_relation v))) and \<phi>)
       ))
     )) \<mu>"
@@ -265,7 +265,8 @@ proof (simp, intro allI)
       then have "kat_dl.dyn_eval ?REACHABLE_FML \<nu>1"
         using \<nu>_sat
         using \<nu>1_cond
-        by simp
+        apply (simp add: dyn_sem)
+        by blast
       then obtain \<nu>2 where \<nu>2_cond: "full_prog_eval \<pi> \<nu>1 \<nu>2 \<and> kat_dl.dyn_eval ?INSIDE_FML \<nu>2"
         using kat_dl.DIAMOND_def by fastforce
 
@@ -394,7 +395,7 @@ proof (simp, intro allI)
     show "kat_dl.dyn_eval (\<bbbA> v . (
       \<phi>
       \<Rrightarrow>
-      (\<langle> \<pi>* \<rangle> (\<bbbE> v.
+      (\<langle> (\<pi>*) \<rangle> (\<bbbE> v.
       ( (\<rceil>(FOL (positive_relation v))) and \<phi>)
       ))
     )) \<mu>"
@@ -479,31 +480,30 @@ proof (simp, intro allI)
         unfolding full_prog_eval_def
         by (metis full_prog_eval_int.simps(5) zero_less_one)
 
-      thus "kat_dl.dyn_eval (\<langle> \<pi>* \<rangle> \<rceil> \<bbbA> v . \<rceil> (\<rceil> FOL (positive_relation v) and \<phi>)) \<omega>"
+      thus "kat_dl.dyn_eval (\<langle> (\<pi>*) \<rangle> (\<bbbE> v . (\<rceil> FOL (positive_relation v) and \<phi>))) \<omega>"
         unfolding kat_dl.DIAMOND_def
         unfolding kat_dl.dyn_eval.simps
-        apply (simp del: full_prog_eval_int.simps)
+        apply (simp add:dyn_sem del: full_prog_eval_int.simps )
         using holds_for_0_implications
         by blast
     qed
   qed
 
   thus "(\<exists>\<omega>. full_prog_eval (\<pi>*) \<mu> \<omega> \<and>
-              (\<exists>\<omega>'. fol_equal_everywhere_but v \<omega> \<omega>' \<and>
-                     kat_dl.dyn_eval \<phi> \<omega>' \<and>
-                     fol_eval (positive_relation v) \<omega>' \<and>
-                     \<not> kat_dl.dyn_eval
-                         (\<langle> \<pi> \<rangle> \<bbbA> w . \<rceil> (FOL (plus_one_relation w v) and
-   \<rceil> \<bbbA> v . \<rceil> (FOL (eq_relation v w) and \<rceil> \<phi>)))
-                         \<omega>')) \<or>
-         (\<forall>\<omega>. kat_dl.dyn_eval \<phi> \<omega> \<longrightarrow>
-               fol_equal_everywhere_but v \<mu> \<omega> \<longrightarrow>
-               kat_dl.dyn_eval
-                (\<langle> \<pi>* \<rangle> \<rceil> \<bbbA> v . \<rceil> (\<rceil> FOL (positive_relation v) and \<phi>)) \<omega>)"
-    apply simp
+          (\<exists>\<omega>'. fol_equal_everywhere_but v \<omega> \<omega>' \<and>
+                 kat_dl.dyn_eval \<phi> \<omega>' \<and>
+                 fol_eval (positive_relation v) \<omega>' \<and>
+                 \<not> kat_dl.dyn_eval
+                     (\<langle> \<pi> \<rangle> \<bbbA> w . \<rceil> (FOL (plus_one_relation w v) and
+                                     \<rceil> \<bbbA> v . \<rceil> (FOL (eq_relation v w) and \<rceil> \<phi>)))
+                     \<omega>')) \<or>
+    (\<forall>\<omega>. kat_dl.dyn_eval \<phi> \<omega> \<longrightarrow>
+          fol_equal_everywhere_but v \<mu> \<omega> \<longrightarrow>
+          kat_dl.dyn_eval (\<langle> (\<pi>*) \<rangle> \<bbbE> v . ((\<rceil> FOL (positive_relation v)) and \<phi>)) \<omega>)"
+    apply (simp add: dyn_sem)
     unfolding kat_dl.dyn_eval.simps
     by blast
-  qed
+  qed.
 
 end
 

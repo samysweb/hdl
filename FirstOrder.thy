@@ -11,6 +11,9 @@ subsection \<open> General Definitions \<close>
 text \<open>
 We begin with some general definitions which are not bound to the First-Order Logic locale defined below.
 \<close>
+
+named_theorems dyn_sem "unfolding rules down to the state semantics"
+
 subsubsection \<open> Syntax \<close>
 text \<open>
 First-Order Formulas can consist of atoms of some generic type \texttt{'a} as well as
@@ -24,27 +27,25 @@ datatype ('a, 'vr) fol_formula =
   | NOT "('a,'vr) fol_formula"
   | FOL_ALL "'vr" "('a,'vr) fol_formula"
 
-notation AND (infix "and" 120)
 notation AND (infix "foland" 120)
 (* OR 110 *)
-notation NOT ("\<rceil> _" [130] 130)
 notation NOT ("folnot _" [130] 130)
 notation FOL_ALL ("folall _ _" 200)
 
 definition IMP :: "('a, 'vr) fol_formula \<Rightarrow> ('a, 'vr) fol_formula \<Rightarrow> ('a, 'vr) fol_formula"
- (infixr "\<Rrightarrow>" 100)
- where[simp]: "a \<Rrightarrow> b = \<rceil>(a and \<rceil>b)"
+ (infixr "fol\<Rrightarrow>" 100)
+ where[dyn_sem]: "a fol\<Rrightarrow> b = folnot(a foland folnot b)"
 
 definition EQUIV :: "('a, 'vr) fol_formula \<Rightarrow> ('a, 'vr) fol_formula \<Rightarrow> ('a, 'vr) fol_formula"
- (infixr "\<Lleftarrow>\<Rrightarrow>" 90)
- where[simp]: "a \<Lleftarrow>\<Rrightarrow> b = (a \<Rrightarrow> b) and (b \<Rrightarrow> a)"
+ (infixr "fol\<Lleftarrow>\<Rrightarrow>" 90)
+ where[dyn_sem]: "a fol\<Lleftarrow>\<Rrightarrow> b = (a fol\<Rrightarrow> b) foland (b fol\<Rrightarrow> a)"
 
 definition OR :: "('a, 'vr) fol_formula \<Rightarrow> ('a, 'vr) fol_formula \<Rightarrow> ('a, 'vr) fol_formula"
-  (infix "or" 110)
-  where[simp]: "a or b = \<rceil>(\<rceil>a and \<rceil>b)"
+  (infix "folor" 110)
+  where[dyn_sem]: "a folor b = folnot (folnot a foland folnot b)"
 
 definition FOLTRUE :: "('a, 'vr) fol_formula"
-  where[simp]: "FOLTRUE = (undefined or \<rceil>undefined)"
+  where[dyn_sem]: "FOLTRUE = (undefined folor folnot undefined)"
 
 subsubsection \<open> Semantics Foundations \<close>
 text\<open>
@@ -62,8 +63,8 @@ We then define validity as $\phi$ being satisifed w.r.t. all possible states $\m
 This is captured in the definition \texttt{theory\_valid} which is also used down the line for dynamic logic.
 \<close>
 
-definition theory_valid :: "('formula \<Rightarrow> 'state \<Rightarrow> bool) \<Rightarrow> 'formula \<Rightarrow> bool" ("\<Turnstile>[_] _" 20)
-  where [simp]: "theory_valid T \<phi> = (\<forall> \<mu> . T \<phi> \<mu>)"
+definition theory_valid :: "('formula \<Rightarrow> 'state \<Rightarrow> bool) \<Rightarrow> 'formula \<Rightarrow> bool" ("\<Turnstile>[_] _" [0, 21] 20)
+  where [dyn_sem]: "theory_valid T \<phi> = (\<forall> \<mu> . T \<phi> \<mu>)"
 
 paragraph \<open> Helpers \<close>
 text\<open>
@@ -74,10 +75,10 @@ a given predicate or if states are equal up to one variable.
 \<close>
 
 definition fol_states_agree_on_gen :: "(('state \<Rightarrow> 'var \<Rightarrow> 'val) \<Rightarrow> ('var \<Rightarrow> bool) \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool)"
-    where [simp]: "fol_states_agree_on_gen eval f \<mu> \<omega> = (\<forall> v . ((f v) \<longrightarrow> ((eval \<mu>) v = (eval \<omega>) v)))"
+    where [dyn_sem]: "fol_states_agree_on_gen eval f \<mu> \<omega> = (\<forall> v . ((f v) \<longrightarrow> ((eval \<mu>) v = (eval \<omega>) v)))"
 
 definition fol_equal_everywhere_but_gen :: "('state \<Rightarrow> 'var \<Rightarrow> 'val) \<Rightarrow> 'var \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
-    where [simp]: "fol_equal_everywhere_but_gen eval v \<mu> \<omega> = fol_states_agree_on_gen eval (\<lambda> w. w \<noteq> v) \<mu> \<omega>"
+    where [dyn_sem]: "fol_equal_everywhere_but_gen eval v \<mu> \<omega> = fol_states_agree_on_gen eval (\<lambda> w. w \<noteq> v) \<mu> \<omega>"
 
 subsection \<open> The First-Order Logic Locale \<close>
 text \<open>
@@ -132,8 +133,8 @@ between states.
   fun fol_fv_syn :: "('atom,'var) fol_formula \<Rightarrow> 'var \<Rightarrow> bool"
    where
       "fol_fv_syn (ATOM \<phi>) v = atom_fv_syn \<phi> v"
-    | "fol_fv_syn (\<phi> and \<psi>) v = (fol_fv_syn \<phi> v \<or> fol_fv_syn \<psi> v)"
-    | "fol_fv_syn (\<rceil> \<phi>) v = (fol_fv_syn \<phi> v)"
+    | "fol_fv_syn (\<phi> foland \<psi>) v = (fol_fv_syn \<phi> v \<or> fol_fv_syn \<psi> v)"
+    | "fol_fv_syn (folnot \<phi>) v = (fol_fv_syn \<phi> v)"
     | "fol_fv_syn (folall v \<phi>) w = fol_fv_syn \<phi> w"
 
   lemma fol_fv_syn_finite: "finite (Collect (fol_fv_syn \<phi>))"
@@ -165,16 +166,16 @@ between states.
   fun fol_eval :: "('atom,'var) fol_formula \<Rightarrow> 'state \<Rightarrow> bool"
     where
       "fol_eval (ATOM \<phi>) \<mu> = atom_eval \<phi> \<mu>"
-    | "fol_eval (\<phi> and \<psi>) \<mu> = ((fol_eval \<phi> \<mu>) \<and> (fol_eval \<psi> \<mu>))"
-    | "fol_eval (\<rceil> \<phi>) \<mu> = (\<not> (fol_eval \<phi> \<mu>))"
+    | "fol_eval (\<phi> foland \<psi>) \<mu> = ((fol_eval \<phi> \<mu>) \<and> (fol_eval \<psi> \<mu>))"
+    | "fol_eval (folnot \<phi>) \<mu> = (\<not> (fol_eval \<phi> \<mu>))"
     | "fol_eval (folall v \<phi>) \<mu> = (\<forall> \<omega>. fol_equal_everywhere_but v \<mu> \<omega> \<longrightarrow> (fol_eval \<phi> \<omega>))"
 
   definition fol_valid :: "('atom,'var) fol_formula \<Rightarrow> bool"
-    where [simp]: "fol_valid \<phi> = (\<Turnstile>[fol_eval] \<phi>)"
+    where [dyn_sem]: "fol_valid \<phi> = (\<Turnstile>[fol_eval] \<phi>)"
 
   (* Let's quickly show that our definition of true is correct *)
   lemma fol_true_valid :"\<Turnstile>[fol_eval] FOLTRUE" 
-    by simp
+    by (simp add: dyn_sem)
 
   subsubsection \<open>  Free Variables (Semantic Definitions) \<close>
 
@@ -220,7 +221,7 @@ between states.
       using fv_overapprox
       unfolding fol_fv_syn_mirror_state_def
       unfolding fol_states_agree_on_def
-      by simp
+      by (auto simp add: dyn_sem)
   next
     case (AND F1 F2)
     then show ?case
@@ -654,26 +655,26 @@ for our FOL formalization.
 Note, that \texttt{fol\_hilbert\_axiom\_7} indeed uses the definition of semantically free variables.
 \<close>
 
-lemma fol_hilbert_axiom_1: "\<Turnstile>[fol_eval]  \<phi> \<Rrightarrow> \<phi>"
-  by simp
+lemma fol_hilbert_axiom_1: "\<Turnstile>[fol_eval]  \<phi> fol\<Rrightarrow> \<phi>"
+  by (simp add: dyn_sem)
 
-lemma fol_hilbert_axiom_2: "\<Turnstile>[fol_eval]  (\<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<phi>))"
-  by simp
+lemma fol_hilbert_axiom_2: "\<Turnstile>[fol_eval]  (\<phi> fol\<Rrightarrow> (\<psi> fol\<Rrightarrow> \<phi>))"
+  by (simp add: dyn_sem)
 
-lemma fol_hilbert_axiom_3: "\<Turnstile>[fol_eval] (\<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<xi>)) \<Rrightarrow> ((\<phi> \<Rrightarrow> \<psi>) \<Rrightarrow> (\<phi> \<Rrightarrow> \<xi>))"
-  by simp
+lemma fol_hilbert_axiom_3: "\<Turnstile>[fol_eval] (\<phi> fol\<Rrightarrow> (\<psi> fol\<Rrightarrow> \<xi>)) fol\<Rrightarrow> ((\<phi> fol\<Rrightarrow> \<psi>) fol\<Rrightarrow> (\<phi> fol\<Rrightarrow> \<xi>))"
+  by (simp add: dyn_sem)
 
-lemma fol_hilbert_axiom_4: "\<Turnstile>[fol_eval] (\<rceil>\<phi> \<Rrightarrow> \<rceil>\<psi>) \<Rrightarrow> (\<psi> \<Rrightarrow> \<phi>)"
-  by simp
+lemma fol_hilbert_axiom_4: "\<Turnstile>[fol_eval] (folnot \<phi> fol\<Rrightarrow> folnot \<psi>) fol\<Rrightarrow> (\<psi> fol\<Rrightarrow> \<phi>)"
+  by (simp add: dyn_sem)
 
-lemma fol_hilbert_axiom_6: "\<Turnstile>[fol_eval] (folall v (\<phi> \<Rrightarrow> \<psi>)) \<Rrightarrow> ( (folall v \<phi>) \<Rrightarrow> (folall v \<psi>) )"
-  apply simp
+lemma fol_hilbert_axiom_6: "\<Turnstile>[fol_eval] (folall v (\<phi> fol\<Rrightarrow> \<psi>)) fol\<Rrightarrow> ( (folall v \<phi>) fol\<Rrightarrow> (folall v \<psi>) )"
+  apply (simp add: dyn_sem)
   by blast
 
 lemma fol_hilbert_axiom_7:
   assumes fv_assumption: "\<not> fol_fv_sem \<phi> v"
-  shows "\<Turnstile>[fol_eval] \<phi> \<Rrightarrow> folall v \<phi>"
-proof (simp, intro allI, intro impI)
+  shows "\<Turnstile>[fol_eval] \<phi> fol\<Rrightarrow> folall v \<phi>"
+proof ((simp add: dyn_sem), intro allI, intro impI)
   fix \<mu>
   assume phi_satisfied: "fol_eval \<phi> \<mu>"
   
@@ -698,34 +699,34 @@ qed
 lemma fol_hilbert_axiom_conj_i:
   fixes \<phi> :: "('atom, 'var) fol_formula"
     and \<psi> :: "('atom, 'var) fol_formula"
-  shows "\<Turnstile>[fol_eval]  \<phi> \<Rrightarrow> \<psi> \<Rrightarrow> (\<phi> and \<psi>)"
+  shows "\<Turnstile>[fol_eval]  \<phi> fol\<Rrightarrow> \<psi> fol\<Rrightarrow> (\<phi> foland \<psi>)"
   unfolding fol_valid_def
-  by fastforce
+  by (simp add: dyn_sem)
 
 lemma fol_hilbert_axiom_conj_e1:
   fixes \<phi> :: "('atom, 'var) fol_formula"
     and \<psi> :: "('atom, 'var) fol_formula"
-  shows "\<Turnstile>[fol_eval] (\<phi> and \<psi>) \<Rrightarrow> \<phi>"
+  shows "\<Turnstile>[fol_eval] (\<phi> foland \<psi>) fol\<Rrightarrow> \<phi>"
   unfolding fol_valid_def
-  by fastforce
+  by (simp add: dyn_sem)
 
 
 lemma fol_hilbert_axiom_conj_e2:
   fixes \<phi> :: "('atom, 'var) fol_formula"
     and \<psi> :: "('atom, 'var) fol_formula"
-  shows "\<Turnstile>[fol_eval] (\<phi> and \<psi>) \<Rrightarrow> \<psi>"
+  shows "\<Turnstile>[fol_eval] (\<phi> foland \<psi>) fol\<Rrightarrow> \<psi>"
   unfolding fol_valid_def
-  by fastforce
+  by (simp add: dyn_sem)
 
 lemma fol_hilbert_mp:
   fixes \<phi> :: "('atom, 'var) fol_formula"
     and \<psi> :: "('atom, 'var) fol_formula"
   assumes "\<Turnstile>[fol_eval] \<phi>"
-      and "\<Turnstile>[fol_eval] \<phi> \<Rrightarrow> \<psi>"
+      and "\<Turnstile>[fol_eval] \<phi> fol\<Rrightarrow> \<psi>"
   shows "\<Turnstile>[fol_eval] \<psi>"
   using assms
   unfolding fol_valid_def
-  by force
+  by (simp add: dyn_sem)
 
 text\<open>
 Additionally we prove some boolean algebra results.
@@ -739,37 +740,37 @@ lemma bool_and_comm: "\<And>a b. fol_eval (a foland b) = fol_eval (b foland a)"
   unfolding fol_eval.simps
   by auto
 
-lemma "\<And>a b c. fol_eval ((a or b) or c) = fol_eval (a or (b or c) )"
+lemma "\<And>a b c. fol_eval ((a folor b) folor c) = fol_eval (a folor (b folor c) )"
   unfolding OR_def fol_eval.simps
   by auto
 
-lemma "\<And>a b. fol_eval (a or b) = fol_eval (b or a)"
+lemma "\<And>a b. fol_eval (a folor b) = fol_eval (b folor a)"
   unfolding OR_def fol_eval.simps
   by auto
 
-lemma "\<And>x y z. fol_eval (x foland (y or z)) = fol_eval (x foland y or x foland z)"
+lemma "\<And>x y z. fol_eval (x foland (y folor z)) = fol_eval (x foland y folor x foland z)"
   unfolding OR_def fol_eval.simps
   by auto
 
-lemma bool_or_distrib: "\<And>x y z. fol_eval (x or y foland z) = fol_eval ((x or y) foland (x or z))"
+lemma bool_or_distrib: "\<And>x y z. fol_eval (x folor y foland z) = fol_eval ((x folor y) foland (x folor z))"
   unfolding OR_def fol_eval.simps
   by auto
 
 lemma "\<And>x. fol_eval (x foland FOLTRUE) = fol_eval x"
   unfolding fol_eval.simps
-  by auto
+  by (auto simp add: dyn_sem)
 
-lemma "\<And>x. fol_eval (x or folnot FOLTRUE) = fol_eval x"
+lemma "\<And>x. fol_eval (x folor folnot FOLTRUE) = fol_eval x"
   unfolding OR_def fol_eval.simps
-  by auto
+  by (auto simp add: dyn_sem)
 
 lemma "\<And>x. fol_eval (x foland folnot x) = fol_eval (folnot FOLTRUE)"
   unfolding OR_def fol_eval.simps
-  by auto
+  by (auto simp add: dyn_sem)
 
-lemma "\<And>x. fol_eval (x or folnot x) = fol_eval FOLTRUE"
+lemma "\<And>x. fol_eval (x folor folnot x) = fol_eval FOLTRUE"
   unfolding fol_eval.simps OR_def
-  by auto
+  by (auto simp add: dyn_sem)
 
   
 
