@@ -58,6 +58,10 @@ locale dynamic_theory =
           "\<forall> \<pi> \<mu> \<omega> . ((\<forall> v. ((state_eval \<mu>) v = (state_eval \<omega>) v)) \<longrightarrow> prog_eval \<pi> \<mu> = prog_eval \<pi> \<omega>)"
 begin
 
+  sublocale fol:
+    folCore atom_eval atom_fv_syn state_eval
+    by (simp add: folCore_axioms)
+
   notation BOX ("\<lbrakk> _ \<rbrakk> _" [130, 130] 130)
   
   notation AND (infix "and" 120)

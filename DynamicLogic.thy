@@ -240,6 +240,30 @@ proof -
     by (auto simp add: dyn_sem)
 qed
 
+
+subsection\<open>Determinism and Totality\<close>
+text\<open>
+If a program has exactly one successor state, box and diamond coincide for it.
+This is the generic core of the NDL axiom schema $[p]\phi \leftrightarrow \langle p \rangle \phi$.
+\<close>
+
+lemma box_diamond_iff:
+  assumes total_det: "\<And>\<mu>. \<exists>!\<omega>. prog_eval \<pi> \<mu> \<omega>"
+  shows "dyn_eval (\<langle>\<pi>\<rangle> \<phi>) \<mu> = dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<mu>"
+proof -
+  obtain \<omega> where succ: "prog_eval \<pi> \<mu> \<omega>" and uniq: "\<And>\<upsilon>. prog_eval \<pi> \<mu> \<upsilon> \<Longrightarrow> \<upsilon> = \<omega>"
+    using total_det[of \<mu>] by blast
+  have box: "dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<mu> = dyn_eval \<phi> \<omega>"
+    unfolding dyn_eval.simps
+    using succ uniq
+    by blast
+  have "dyn_eval (\<langle>\<pi>\<rangle> \<phi>) \<mu> = (\<exists>\<upsilon>. prog_eval \<pi> \<mu> \<upsilon> \<and> dyn_eval \<phi> \<upsilon>)"
+    unfolding DIAMOND_def by auto
+  also have "... = dyn_eval \<phi> \<omega>"
+    using succ uniq by blast
+  finally show ?thesis using box by simp
+qed
+
 end
 
 

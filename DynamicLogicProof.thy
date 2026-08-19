@@ -32,6 +32,18 @@ lemma dt_prop_uncurry:
   "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<chi>) \<Longrightarrow> \<Turnstile>[dyn_eval] (\<phi> and \<psi>) \<Rrightarrow> \<chi>"
   by (auto simp add: dyn_sem)
 
+
+
+lemma dt_box_diamond_iff:
+  assumes total_det: "\<And>\<mu>. \<exists>!\<omega>. prog_eval \<pi> \<mu> \<omega>"
+  shows "\<Turnstile>[dyn_eval] ((\<langle>\<pi>\<rangle> \<phi>) \<Lleftarrow>\<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk> \<phi>))"
+  apply (rule dt_prop_equivI)
+  unfolding theory_valid_def IMP_def
+  unfolding dyn_eval.simps(1,2,3)
+  using assms
+  using box_diamond_iff
+  by auto
+
 lemma dyn_axiom_F1V:
   "\<Turnstile>[dyn_eval] (\<bbbA>\<bbbA> v . (\<phi> \<Rrightarrow> \<psi>)) \<Rrightarrow> ( (\<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> (\<bbbA>\<bbbA> v . \<psi>) )"
 proof (induct v)

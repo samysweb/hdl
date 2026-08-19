@@ -20,19 +20,33 @@ theory SemiRingHDL
 begin
 
 
-type_synonym semiringhfol_var = "string + string"
+type_synonym ('semiring_var1,'semiring_var2) semiringhfol_var = "'semiring_var1 + 'semiring_var2"
 
-datatype ('semiringhfol_val :: ordered_semiring) semiringhfol_term =
+datatype ('semiring_var1,'semiring_var2, 'semiringhfol_val :: ordered_semiring) semiringhfol_term =
   Const 'semiringhfol_val
-  | Var "semiringhfol_var"
-  | Add "'semiringhfol_val semiringhfol_term" "'semiringhfol_val semiringhfol_term"
-  | Mul "'semiringhfol_val semiringhfol_term" "'semiringhfol_val semiringhfol_term"
+  | Var "('semiring_var1,'semiring_var2) semiringhfol_var"
+  | Add
+    "('semiring_var1,'semiring_var2,'semiringhfol_val) semiringhfol_term"
+    "('semiring_var1,'semiring_var2,'semiringhfol_val) semiringhfol_term"
+  | Mul
+    "('semiring_var1,'semiring_var2,'semiringhfol_val) semiringhfol_term"
+    "('semiring_var1,'semiring_var2,'semiringhfol_val) semiringhfol_term"
 
-datatype ('semiringhfol_val :: ordered_semiring) semiringhfol_atom =
-  Eq "'semiringhfol_val semiringhfol_term" "'semiringhfol_val semiringhfol_term"
-  | Less "'semiringhfol_val semiringhfol_term" "'semiringhfol_val semiringhfol_term"
+datatype ('semiring_var1,'semiring_var2, 'semiringhfol_val :: ordered_semiring) semiringhfol_atom =
+  Eq
+    "('semiring_var1,'semiring_var2,'semiringhfol_val) semiringhfol_term"
+    "('semiring_var1,'semiring_var2,'semiringhfol_val) semiringhfol_term"
+  | Less
+    "('semiring_var1,'semiring_var2,'semiringhfol_val) semiringhfol_term"
+    "('semiring_var1,'semiring_var2,'semiringhfol_val) semiringhfol_term"
 
-fun semiringhfol_TermEval :: "('semiringhfol_val :: ordered_semiring) semiringhfol_term \<Rightarrow> (((semiringfol_var, 'semiringhfol_val) fol_state)*((semiringfol_var, 'semiringhfol_val) fol_state)) \<Rightarrow> 'semiringhfol_val"
+fun semiringhfol_TermEval :: "
+  (('semiring_var1,'semiring_var2,'semiringhfol_val :: ordered_semiring) semiringhfol_term) \<Rightarrow>
+  (
+    (('semiring_var1, 'semiringhfol_val) fol_state)
+      *
+    (('semiring_var2, 'semiringhfol_val) fol_state)) \<Rightarrow>
+  'semiringhfol_val"
   where
     "semiringhfol_TermEval (Const n) \<mu> = n"
   | "semiringhfol_TermEval (Var (Inl v)) \<mu> = ((fst \<mu>) v)"
@@ -40,19 +54,19 @@ fun semiringhfol_TermEval :: "('semiringhfol_val :: ordered_semiring) semiringhf
   | "semiringhfol_TermEval (Add a b) \<mu> = (semiringhfol_TermEval a \<mu>) + (semiringhfol_TermEval b \<mu>)"
   | "semiringhfol_TermEval (Mul a b) \<mu> = (semiringhfol_TermEval a \<mu>) * (semiringhfol_TermEval b \<mu>)"
 
-fun semiringhfol_AtomEval :: "('semiringhfol_val :: ordered_semiring) semiringhfol_atom \<Rightarrow> (((semiringfol_var, 'semiringhfol_val) fol_state)*((semiringfol_var, 'semiringhfol_val) fol_state)) \<Rightarrow> bool"
+fun semiringhfol_AtomEval :: "('semiring_var1,'semiring_var2,'semiringhfol_val :: ordered_semiring) semiringhfol_atom \<Rightarrow> ((('semiring_var1, 'semiringhfol_val) fol_state)*(('semiring_var2, 'semiringhfol_val) fol_state)) \<Rightarrow> bool"
   where
     "semiringhfol_AtomEval (Eq a b) \<mu> = ((semiringhfol_TermEval a \<mu>) = (semiringhfol_TermEval b \<mu>))"
   | "semiringhfol_AtomEval (Less a b) \<mu> = ((semiringhfol_TermEval a \<mu>) < (semiringhfol_TermEval b \<mu>))"
 
-fun semiringhfol_TermFVSyn :: "('semiringhfol_val :: ordered_semiring) semiringhfol_term \<Rightarrow> semiringhfol_var \<Rightarrow> bool"
+fun semiringhfol_TermFVSyn :: "('semiring_var1,'semiring_var2,'semiringhfol_val :: ordered_semiring) semiringhfol_term \<Rightarrow> ('semiring_var1,'semiring_var2) semiringhfol_var \<Rightarrow> bool"
   where
     "semiringhfol_TermFVSyn (Const n) v = False"
   | "semiringhfol_TermFVSyn (Var w) v = (v=w)"
   | "semiringhfol_TermFVSyn (Add a b) v = ((semiringhfol_TermFVSyn a v) \<or> (semiringhfol_TermFVSyn b v))"
   | "semiringhfol_TermFVSyn (Mul a b) v = ((semiringhfol_TermFVSyn a v) \<or> (semiringhfol_TermFVSyn b v))"
 
-fun semiringhfol_AtomFVSyn :: "('semiringhfol_val :: ordered_semiring) semiringhfol_atom \<Rightarrow> semiringhfol_var \<Rightarrow> bool"
+fun semiringhfol_AtomFVSyn :: "('semiring_var1,'semiring_var2, 'semiringhfol_val :: ordered_semiring) semiringhfol_atom \<Rightarrow> ('semiring_var1,'semiring_var2) semiringhfol_var \<Rightarrow> bool"
   where
     "semiringhfol_AtomFVSyn (Eq a b) v = ((semiringhfol_TermFVSyn a v) \<or> (semiringhfol_TermFVSyn b v))"
   | "semiringhfol_AtomFVSyn (Less a b) v = ((semiringhfol_TermFVSyn a v) \<or> (semiringhfol_TermFVSyn b v))"
@@ -65,15 +79,15 @@ interpretation semiring_hdl:
     "semiringfol_AtomEval" "semiringfol_AtomFVSyn" state_id semiring_dl_full.full_prog_eval semiring_dl_full.full_prog_fv_syn
     semiringhfol_AtomEval semiringhfol_AtomFVSyn
 proof
-  fix a :: "('semiringhfol_val :: ordered_semiring) semiringhfol_atom"
-  fix \<mu> :: "(semiringfol_var \<Rightarrow> ('semiringhfol_val :: ordered_semiring))*(semiringfol_var \<Rightarrow> ('semiringhfol_val :: ordered_semiring))"
-  fix \<omega> :: "(semiringfol_var \<Rightarrow> ('semiringhfol_val :: ordered_semiring))*(semiringfol_var \<Rightarrow> ('semiringhfol_val :: ordered_semiring))"
+  fix a :: "('semiring_var1,'semiring_var2, 'semiringhfol_val :: ordered_semiring) semiringhfol_atom"
+  fix \<mu> :: "('semiring_var1 \<Rightarrow> ('semiringhfol_val :: ordered_semiring))*('semiring_var2 \<Rightarrow> ('semiringhfol_val :: ordered_semiring))"
+  fix \<omega> :: "('semiring_var1 \<Rightarrow> ('semiringhfol_val :: ordered_semiring))*('semiring_var2 \<Rightarrow> ('semiringhfol_val :: ordered_semiring))"
 
   show "finite (Collect (semiringhfol_AtomFVSyn a))"
   proof -
-    have termFV_finite: "\<And> (t :: ('semiringhfol_val :: ordered_semiring) semiringhfol_term) .finite (Collect (semiringhfol_TermFVSyn t))"
+    have termFV_finite: "\<And> (t :: ('semiring_var1,'semiring_var2, 'semiringhfol_val :: ordered_semiring) semiringhfol_term) .finite (Collect (semiringhfol_TermFVSyn t))"
     proof -
-      fix t :: "('semiringhfol_val :: ordered_semiring) semiringhfol_term"
+      fix t :: "('semiring_var1,'semiring_var2, 'semiringhfol_val :: ordered_semiring) semiringhfol_term"
       show "finite (Collect (semiringhfol_TermFVSyn t))"
       proof (induct t)
         case (Const x)
@@ -108,7 +122,7 @@ proof
         (semiringhfol_TermFVSyn t) \<mu> \<omega> \<Longrightarrow>
        semiringhfol_TermEval t \<mu> = semiringhfol_TermEval t \<omega>"
   proof -
-      fix t :: "('semiringhfol_val :: ordered_semiring) semiringhfol_term"
+      fix t :: "('semiring_var1,'semiring_var2, 'semiringhfol_val :: ordered_semiring) semiringhfol_term"
       show "fol_states_agree_on_gen (common_atom_eval state_id state_id)
         (semiringhfol_TermFVSyn t) \<mu> \<omega> \<Longrightarrow>
        semiringhfol_TermEval t \<mu> = semiringhfol_TermEval t \<omega>"
@@ -164,7 +178,7 @@ proof
   proof (intro allI)
     fix \<omega>
     fix \<mu>
-    fix V :: "(string + string) set"
+    fix V 
 
     let ?Vl = "{v . (Inl v) \<in> V}"
     let ?Vr = "{v . (Inr v) \<in> V}"
@@ -224,6 +238,7 @@ interpretation full_hdl_rewriting:
     semiringhfol_AtomEval semiringhfol_AtomFVSyn
   apply standard
     unfolding state_id_def unfolding id_def
+     apply presburger
     by presburger
 
   thm full_hdl_rewriting.kat_rewriting.kat_rule1
@@ -247,18 +262,7 @@ interpretation full_hdl_rewriting:
 (* TEST *)
 
 lemma test:
-  fixes \<alpha> :: "((('a::ordered_semiring) semiringfol_atom, 'a semiringfol_atom,
-    'a semiringhfol_atom) het_atom,
-   char list + char list,
-   (('a semiringfol_atom, 'a semiringfol_atom,
-     'a semiringhfol_atom) het_atom,
-    char list + char list,
-    (('a semiringfol_atom, char list,
-      ('a semiringfol_atom, char list,
-       'a semiring_prog) havoc_prog) kat_prog,
-     ('a semiringfol_atom, char list,
-      ('a semiringfol_atom, char list,
-       'a semiring_prog) havoc_prog) kat_prog) het_prog) havoc_prog) kat_prog"
+  fixes \<alpha> 
   shows "\<And> a b . \<not> (semiring_hdl.hdl_kat.full_prog_eval ((? (folnot FOLTRUE));\<alpha>) a b)"
 proof -
   have "\<And> a b . \<not> (semiring_hdl.hdl_kat.full_prog_eval ((? (folnot FOLTRUE))) a b)"
