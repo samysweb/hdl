@@ -309,9 +309,10 @@ declare ok_dyn.simps ok_fol.simps ok_atom.simps ok_term.simps [ndl_ok]
 
 declare cmp_dyn.simps cmp_fol.simps cmp_atom.simps cmp_term.simps [ndl_cmp]
 
-method ndl_compile uses shape =
+method ndl_compile uses shape declares ndl_ok ndl_cmp =
   (rule nn_box_compileI[OF shape] ;
-     ((solves \<open>simp add: ndl_ok\<close>) | (simp add: ndl_cmp)?))
+     ((solves \<open>simp add: ndl_ok del: One_nat_def\<close>)
+      | (simp add: ndl_cmp del: One_nat_def)?))
 
 text\<open>
 Quantifiers could be added by the auxiliary-variable trick: a lookup \<open>u\<close> with
