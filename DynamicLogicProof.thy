@@ -2,35 +2,87 @@ theory DynamicLogicProof
   imports
     Main
     "DynamicLogic"
+    "HOL-Eisbach.Eisbach"
 begin
 
 context dynamic_theory
 begin
 
+named_theorems dt_prop_unfold
+  "propositional layer for dt_prop — do not add the BOX or \<forall>-equations here"
+
+subsection\<open>Propositional skeleton\<close>
+
+lemma dt_propI: "(\<And>\<mu>. dyn_eval \<chi> \<mu>) \<Longrightarrow> \<Turnstile>[dyn_eval] \<chi>"
+  by (simp add: theory_valid_def)
+
+lemma dt_propD: "\<Turnstile>[dyn_eval] \<phi> \<Longrightarrow> dyn_eval \<phi> \<mu>"
+  by (simp add: theory_valid_def)
+
+text\<open>
+The state of the conclusion determines \<open>\<mu>\<close>,
+so \<open>erule\<close> instantiates it for us.\<close>
+lemma dt_prop_localize:
+  "\<Turnstile>[dyn_eval] \<phi> \<Longrightarrow> (dyn_eval \<phi> \<mu> \<Longrightarrow> dyn_eval \<chi> \<mu>) \<Longrightarrow> dyn_eval \<chi> \<mu>"
+  by (simp add: theory_valid_def)
+
+text\<open>
+Homomorphism equations.
+Stated as named lemmas so that reordering the datatype
+cannot silently change the bundle.\<close>
+
+lemma dt_ev_and  [dt_prop_unfold]: "dyn_eval (\<phi> and \<psi>) \<mu> \<longleftrightarrow> (dyn_eval \<phi> \<mu> \<and> dyn_eval \<psi> \<mu>)" by simp
+lemma dt_ev_not  [dt_prop_unfold]: "dyn_eval (\<rceil>\<phi>) \<mu> \<longleftrightarrow> (\<not> dyn_eval \<phi> \<mu>)" by simp
+lemma dt_ev_fol  [dt_prop_unfold]: "dyn_eval (FOL \<phi>) \<mu> \<longleftrightarrow> fol_eval \<phi> \<mu>" by simp
+lemma dt_fev_and [dt_prop_unfold]: "fol_eval (\<phi> foland \<psi>) \<mu> \<longleftrightarrow> (fol_eval \<phi> \<mu> \<and> fol_eval \<psi> \<mu>)" by simp
+lemma dt_fev_not [dt_prop_unfold]: "fol_eval (folnot \<phi>) \<mu> \<longleftrightarrow> (\<not> fol_eval \<phi> \<mu>)" by simp
+
+text\<open>Sugar. These rewrite inside boxes too, which normalises atoms — desirable.\<close>
+
+declare IMP_def [dt_prop_unfold] OR_def [dt_prop_unfold]
+        EQUIV_def [dt_prop_unfold] DIAMOND_def [dt_prop_unfold]
+        DYN_EX_def [dt_prop_unfold] DYNTRUE_def [dt_prop_unfold]
+        FirstOrder.IMP_def [dt_prop_unfold] FirstOrder.OR_def [dt_prop_unfold]
+        FirstOrder.EQUIV_def [dt_prop_unfold] FOLTRUE_def [dt_prop_unfold]
+
+method dt_prop_setup uses facts declares dt_prop_unfold =
+  (-,
+   (insert facts)?,
+   use nothing in
+     \<open>(rule dt_propI)?,
+      ((erule dt_prop_localize)+)?,
+      (simp only: dt_prop_unfold)?\<close>)
+
+method dt_prop uses facts declares dt_prop_unfold =
+  (dt_prop_setup facts: facts ; satx)
+
+method dt_prop_debug uses facts declares dt_prop_unfold =
+  (dt_prop_setup facts: facts)
+
 
 lemma dt_prop_id:
   "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<phi>"
-  by (auto simp add: dyn_sem)
+  by dt_prop
 
 lemma dt_prop_imp_trans [trans]:
   "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<psi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<psi> \<Rrightarrow> \<chi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<chi>"
-  by (auto simp add: dyn_sem)
+  by dt_prop
 
 lemma dt_prop_imp_trans_rev:
   "\<Turnstile>[dyn_eval] \<psi> \<Rrightarrow> \<chi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<psi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<chi>"
-  by (auto simp add: dyn_sem)
+  by dt_prop
 
 lemma dt_prop_equivI [intro]:
   "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<psi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<psi> \<Rrightarrow> \<phi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<phi> \<Lleftarrow>\<Rrightarrow> \<psi>"
-  by (auto simp add: dyn_sem)
+  by dt_prop
 
 lemma dt_prop_conjI [intro]:
   "\<Turnstile>[dyn_eval] \<chi> \<Rrightarrow> \<phi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<chi> \<Rrightarrow> \<psi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<chi> \<Rrightarrow> (\<phi> and \<psi>)"
-  by (auto simp add: dyn_sem)
+  by dt_prop
 
 lemma dt_prop_uncurry:
   "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<chi>) \<Longrightarrow> \<Turnstile>[dyn_eval] (\<phi> and \<psi>) \<Rrightarrow> \<chi>"
-  by (auto simp add: dyn_sem)
+  by dt_prop
 
 
 
@@ -50,7 +102,7 @@ proof (induct v)
   case Nil
   then show ?case
     unfolding FOR_ALL_VEC.simps
-    by (simp add: dyn_sem)
+    by dt_prop
 next
   case (Cons a v)
   then show ?case
@@ -61,15 +113,13 @@ next
       using dyn_axiom_A
       by blast
     then have "\<Turnstile>[dyn_eval] (\<bbbA> a . (\<bbbA>\<bbbA> v . (\<phi> \<Rrightarrow> \<psi>))) \<Rrightarrow> (\<bbbA> a . ((\<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> (\<bbbA>\<bbbA> v . \<psi>)))"
-      using dyn_axiom_F1
-      using dyn_hilbert_mp
-      by blast
+      using dyn_axiom_F1[of a "\<bbbA>\<bbbA> v . (\<phi> \<Rrightarrow> \<psi>)" "(\<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> \<bbbA>\<bbbA> v . \<psi>"]
+      by dt_prop
     also have "\<Turnstile>[dyn_eval] (\<bbbA> a . ((\<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> \<bbbA>\<bbbA> v . \<psi>)) \<Rrightarrow> ((\<bbbA> a . \<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> (\<bbbA> a . \<bbbA>\<bbbA> v . \<psi>))"
-      using dyn_axiom_F1
-      using dyn_hilbert_mp
-      by blast
+      using dyn_axiom_F1[of a "\<bbbA>\<bbbA> v . \<phi>" "\<bbbA>\<bbbA> v . \<psi>"]
+      by dt_prop
     finally show "\<Turnstile>[dyn_eval] (\<bbbA> a . \<bbbA>\<bbbA> v . (\<phi> \<Rrightarrow> \<psi>)) \<Rrightarrow> ((\<bbbA> a . \<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> \<bbbA> a . \<bbbA>\<bbbA> v . \<psi>)"
-      by simp
+      by dt_prop
   qed
 qed
 
@@ -98,7 +148,7 @@ proof (induct v)
   case Nil
   then show ?case
     unfolding FOR_ALL_VEC.simps
-    by (simp add: dyn_sem)
+    by dt_prop
 next
   case (Cons a v)
   then show ?case
@@ -109,17 +159,17 @@ next
     assume "list_all (\<lambda>x. \<not> dyn_fv_sem \<phi> x) v \<Longrightarrow> \<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<bbbA>\<bbbA> v . \<phi>)"
     then have fact2:"\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<bbbA>\<bbbA> v . \<phi>)"
       using fact1
-      by auto
+      by simp
     have "\<not> dyn_fv_sem \<phi> a"
       using fact1
       by simp
     then have "\<Turnstile>[dyn_eval] (\<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> (\<bbbA> a . \<bbbA>\<bbbA> v . \<phi>)"
       using dyn_axiom_F2[of "\<bbbA>\<bbbA> v . \<phi>" a]
       using all_vec_fv[of \<phi> a v]
-      by blast
+      by simp
     then show "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<bbbA> a . \<bbbA>\<bbbA> v . \<phi>"
       using fact2
-      by (auto simp add: dyn_sem)
+      by dt_prop
   qed
 qed
 
@@ -129,18 +179,18 @@ proof (induct v)
   case Nil
   then show ?case
     unfolding FOR_ALL_VEC.simps
-    by (simp add: dyn_sem)
+    by dt_prop
 next
   case (Cons a v)
   then show ?case
     unfolding FOR_ALL_VEC.simps(2)
   proof -
     have "\<Turnstile>[dyn_eval] (\<bbbA> a . \<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> \<bbbA>\<bbbA> v . \<phi>"
-      using dyn_axiom_F3
-      by blast
+      using dyn_axiom_F3[of a "\<bbbA>\<bbbA> v . \<phi>"]
+      by dt_prop
     also assume "\<Turnstile>[dyn_eval] (\<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> \<phi>"
     finally show "\<Turnstile>[dyn_eval] (\<bbbA> a . \<bbbA>\<bbbA> v . \<phi>) \<Rrightarrow> \<phi>"
-      by simp
+      by dt_prop
   qed
 qed
 
@@ -152,7 +202,7 @@ proof (induct v)
   case Nil
   then show ?case
     unfolding FOR_ALL_VEC.simps
-    by simp
+    by dt_prop
 next
   case (Cons a v)
   then show ?case
@@ -164,35 +214,38 @@ qed
 lemma dt_box_K [intro]:
   "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>(\<phi> \<Rrightarrow> \<psi>) \<Longrightarrow> \<Turnstile>[dyn_eval] ((\<lbrakk>\<pi>\<rbrakk>\<phi> \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>\<psi>))"
   using dyn_axiom_K[of \<pi> \<phi> \<psi>]
-  using dyn_hilbert_mp[of "\<lbrakk>\<pi>\<rbrakk>(\<phi> \<Rrightarrow> \<psi>)"]
-  by simp
+  using dyn_hilbert_mp[of "\<lbrakk>\<pi>\<rbrakk>(\<phi> \<Rrightarrow> \<psi>)" "\<lbrakk> \<pi> \<rbrakk> \<phi> \<Rrightarrow> \<lbrakk> \<pi> \<rbrakk> \<psi>"]
+  by dt_prop
 
 lemma dt_box_G:
   "\<Turnstile>[dyn_eval] \<phi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>\<phi>"
-  using dyn_axiom_G by simp
+  using dyn_axiom_G[of \<phi> \<pi>]
+  by simp
 
 lemma dt_box_M:
   "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<psi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> \<phi> \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>\<psi>"
   apply (rule dt_box_K)
-  apply (rule dt_box_G).
+  by (rule dt_box_G)
 
 lemma dt_box_MR:
   "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<psi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> \<phi> \<Longrightarrow> \<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>\<psi>"
-  using dyn_hilbert_mp
-  using dt_box_M
-  by blast
+  using dyn_hilbert_mp[of "\<lbrakk> \<pi> \<rbrakk> \<phi>" "\<lbrakk> \<pi> \<rbrakk> \<psi>"]
+  using dt_box_M[of \<phi> \<psi>  \<pi>]
+  by simp
 
 lemma dt_diamond_K:
   "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> (\<phi> \<Rrightarrow> \<psi>) \<Rrightarrow> (\<langle>\<pi>\<rangle> \<phi> \<Rrightarrow> \<langle>\<pi>\<rangle> \<psi>)"
 proof -
   have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> (\<rceil>\<psi> \<Rrightarrow> \<rceil>\<phi>)\<Rrightarrow>(\<lbrakk>\<pi>\<rbrakk>\<rceil>\<psi> \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>\<rceil>\<phi>)"
-    using dyn_axiom_K
-    by blast
+    using dyn_axiom_K[of \<pi> "\<rceil> \<psi>" "\<rceil> \<phi>"]
+    by dt_prop
+  then have fact: "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> (\<rceil>\<psi> \<Rrightarrow> \<rceil>\<phi>)\<Rrightarrow>(\<rceil>\<lbrakk>\<pi>\<rbrakk>\<rceil>\<phi> \<Rrightarrow> \<rceil>\<lbrakk>\<pi>\<rbrakk>\<rceil>\<psi>)"
+    by dt_prop
   have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> (\<phi> \<Rrightarrow> \<psi>) \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk> (\<rceil>\<psi> \<Rrightarrow> \<rceil>\<phi>)"
     apply (intro dt_box_M)
-    by (auto simp add: dyn_sem)
+    by dt_prop
   also have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> (\<rceil>\<psi> \<Rrightarrow> \<rceil>\<phi>)\<Rrightarrow>(\<rceil>\<lbrakk>\<pi>\<rbrakk>\<rceil>\<phi> \<Rrightarrow> \<rceil>\<lbrakk>\<pi>\<rbrakk>\<rceil>\<psi>)"
-    by (auto simp add: dyn_sem)
+    using fact by simp
   then have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> (\<rceil>\<psi> \<Rrightarrow> \<rceil>\<phi>)\<Rrightarrow>(\<langle>\<pi>\<rangle>\<phi> \<Rrightarrow> \<langle>\<pi>\<rangle> \<psi>)"
     by (auto simp add: dyn_sem)
   finally show ?thesis.
@@ -207,24 +260,24 @@ proof (rule dt_prop_equivI)
     show "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>(\<phi> and \<psi>) \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>\<phi>"
       apply (rule dt_box_K)
       apply (rule dt_box_G)
-      by (simp add: dyn_sem)
+      by dt_prop
     show "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>(\<phi> and \<psi>) \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>\<psi>"
       apply (rule dt_box_K)
       apply (rule dt_box_G)
-      by (simp add: dyn_sem)
+      by dt_prop
   qed
 next
   have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>\<phi> \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>(\<psi> \<Rrightarrow> (\<phi> and \<psi>))"
     apply (rule dt_box_K)
     apply (rule dt_box_G)
-    by (simp add: dyn_sem)
+    by dt_prop
   also have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>(\<psi> \<Rrightarrow> (\<phi> and \<psi>)) \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk>\<psi> \<Rrightarrow>  \<lbrakk>\<pi>\<rbrakk>(\<phi> and \<psi>))"
     by (rule dyn_axiom_K)
   finally have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>\<phi> \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk>\<psi> \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>(\<phi> and \<psi>))"
     apply (rule dt_prop_imp_trans)
-    by (rule dt_prop_id)
+    by dt_prop
   thus "\<Turnstile>[dyn_eval] ((\<lbrakk>\<pi>\<rbrakk>\<phi>) and (\<lbrakk>\<pi>\<rbrakk>\<psi>)) \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>(\<phi> and \<psi>)"
-    by (rule dt_prop_uncurry)
+    by dt_prop
 qed
 
 lemma dt_diamond_mp:
@@ -241,22 +294,20 @@ proof -
     by (metis disjoint_iff mem_Collect_eq)
 
   also have "\<Turnstile>[dyn_eval] (\<bbbA> v . (\<phi> \<Rrightarrow> \<psi>)) \<Rrightarrow> (\<phi> \<Rrightarrow> \<psi>)"
-    using dyn_axiom_F3
-    by simp
+    using dyn_axiom_F3[of v "(\<phi> \<Rrightarrow> \<psi>)"]
+    by dt_prop
 
   then have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> (\<bbbA> v . (\<phi> \<Rrightarrow> \<psi>)) \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk> (\<phi> \<Rrightarrow> \<psi>)"
     by (rule dt_box_M)
 
   also have "\<Turnstile>[dyn_eval] \<lbrakk> \<pi> \<rbrakk> (\<phi> \<Rrightarrow> \<psi>) \<Rrightarrow> \<langle>\<pi>\<rangle> \<phi> \<Rrightarrow> \<langle>\<pi>\<rangle>\<psi> "
     using dt_diamond_K[of \<pi> \<phi> \<psi>]
-    by blast
+    by dt_prop
 
   finally show ?thesis
-    by (auto simp add: dyn_sem)
+    by dt_prop
 qed
-    
-  
-    
+
 
 end
 
