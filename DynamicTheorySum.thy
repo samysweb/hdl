@@ -50,6 +50,11 @@ lemma sum_prog_fv_simps [simp]:
   "sum_prog_fv (Inr q) = progB_fv q"
   by (simp_all add: sum_prog_fv_def)
 
+
+sublocale fol:
+  folCore atom_eval atom_fv_syn state_eval
+  using A.folCore_axioms by blast
+
 sublocale sum_dl:
   dynamic_theory atom_eval atom_fv_syn state_eval sum_prog_eval sum_prog_fv
 proof
