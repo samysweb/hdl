@@ -9,7 +9,7 @@ theory DynamicLogicVersaille
 begin
 
 locale dynamic_theory_versaille =
-    dynamic_theory_eq atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
+    dynamic_theory_eq atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV eqPred
     +
     regular_lifting atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
     for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
@@ -17,6 +17,7 @@ locale dynamic_theory_versaille =
     and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
     and prog_eval :: "'prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
     and dyn_prog_FV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
+    and eqPred :: "'var \<Rightarrow> 'var \<Rightarrow> ('atom, 'var) fol_formula"
 begin 
 
 interpretation kat_dl_eq:
