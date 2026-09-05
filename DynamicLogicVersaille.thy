@@ -133,17 +133,17 @@ theorem dt_versaille:
     and Read :: "'var set"
     and ws :: "'var list"
     and wsplus :: "'var list"
-    defines "AllV \<equiv> (
-            (Collect (kat_dl.dyn_fv_sem (\<lbrakk>env\<rbrakk> J))) \<union>
+  defines "AllV \<equiv> (
+            (Collect (kat_dl.dyn_fv_sem J)) \<union>
             (Collect (kat_dl.dyn_fv_sem pre)) \<union>
             (Collect (kat_dl.dyn_fv_sem post)) \<union>
             (Collect (kat_dl.dyn_prog_fv_sem ctl)) \<union>
-            (Collect (kat_dl.dyn_prog_bv_sem ctl)) \<union> (set ws) \<union> Read
+            (Collect (kat_dl.dyn_prog_fv_sem env)) \<union> (set ws) \<union> Read
             )"
   defines "monitorminus \<equiv> (\<bbbA>\<bbbA> wsplus . ((FOL (eqPredV ws wsplus)) \<Rrightarrow> monitor))"
-  (* Read and ws describe the free and bound variabels of ctl*)
+  (* ws describes the free and bound variabels of ctl*)
   assumes ws_bound: "(Collect (kat_dl.dyn_prog_bv_sem ctl)) \<subseteq> set ws"
-  (* simplification: no writing of read variables *)
+      (* no writing of read model variables *)
       and Read_ws_disjnt: "disjnt Read (set ws)"
       (* ws has no duplicates *)
       and ws_dist: "distinct ws"
@@ -195,6 +195,12 @@ proof -
               ((Collect (kat_dl.dyn_prog_fv_sem ctl)) \<union> (Collect (kat_dl.dyn_fv_sem ?\<psi>)))"
         using kat_dl.dyn_fv_sem_box_subset
         by blast
+      also have "... \<subseteq> 
+              ((Collect (kat_dl.dyn_prog_fv_sem ctl)) \<union> 
+                (Collect (kat_dl.dyn_prog_fv_sem env)) \<union>
+                (Collect (kat_dl.dyn_fv_sem J)))"
+        using kat_dl.dyn_fv_sem_box_subset
+        by blast
       also have "... \<subseteq> AllV"
         unfolding AllV_def
         by blast
@@ -210,9 +216,14 @@ proof -
     by blast
   qed
 
-  have fresh_\<psi>: "\<And>x. x \<in> set wsplus \<Longrightarrow> \<not> kat_dl.dyn_fv_sem (\<lbrakk>env\<rbrakk> J) x"
+  have envJ_inclusion: "Collect (kat_dl.dyn_fv_sem (\<lbrakk>env\<rbrakk> J)) \<subseteq> (
+          Collect (kat_dl.dyn_fv_sem (J)) \<union>
+          Collect (kat_dl.dyn_prog_fv_sem env))"
+    by (simp add: inf_sup_aci(5) kat_dl.dyn_fv_sem_box_subset)
+
+  then have fresh_\<psi>: "\<And>x. x \<in> set wsplus \<Longrightarrow> \<not> kat_dl.dyn_fv_sem (\<lbrakk>env\<rbrakk> J) x"
     using wsplus_AllV unfolding AllV_def
-    by (smt (z3) Un_upper1 disjnt_iff mem_Collect_eq subset_eq)
+    by (smt (verit, ccfv_threshold) Un_iff disjnt_iff mem_Collect_eq subsetD)
 
   have fact3: "\<Turnstile>[kat_dl.dyn_eval] (\<bbbA>\<bbbA> wsplus . ?\<phi>plus) \<Rrightarrow> ?\<phi>"
     unfolding monitorminus_def
@@ -353,6 +364,19 @@ proof -
                 ) - (set wsplus))"
         by (metis Diff_mono Un_absorb kat_dl_eq.eqPredV_fv_sem_subset sup.cobounded2
             sup.mono wsplus_disjnt_ws wsplus_length)
+      also have "... \<subseteq> 
+              ((
+                  (Read \<union> (set wsplus)) \<union>
+                  ((
+                      ((set ws) \<union> (set wsplus))
+                      \<union>
+                      (
+                        (Collect (kat_dl.dyn_fv_sem (J))) \<union>
+                        (Collect (kat_dl.dyn_prog_fv_sem env))
+                      )
+                    ) - (set ws))
+                ) - (set wsplus))"
+        using envJ_inclusion by blast
       also have "... \<subseteq> 
               ((
                   (Read \<union> (set wsplus)) \<union>
