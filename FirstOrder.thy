@@ -647,6 +647,51 @@ lemma fol_fv_sem_coincidence_smallest:
       by auto
   qed
 
+  subsection\<open>Admissible values of variables.\<close>
+
+  definition var_vals :: "'var \<Rightarrow> 'val set"
+    where "var_vals v = {\<delta>. \<exists>\<mu>. state_eval \<mu> v = \<delta>}"
+
+  definition twin_var :: "'var \<Rightarrow> 'var \<Rightarrow> bool"
+    where "twin_var v w \<longleftrightarrow> var_vals v = var_vals w"
+
+  abbreviation twin_vec :: "'var list \<Rightarrow> 'var list \<Rightarrow> bool"
+    where "twin_vec vs ws \<equiv> list_all2 twin_var vs ws"
+
+  lemma twin_var_refl: "twin_var v v"
+    by (simp add: twin_var_def)
+
+  lemma twin_var_sym: "twin_var v w \<Longrightarrow> twin_var w v"
+    by (simp add: twin_var_def)
+
+  text\<open>Convexity: Retrieval of state.\<close>
+  lemma state_mixI:
+    obtains \<nu> where "\<And>v. v \<in> V \<Longrightarrow> state_eval \<nu> v = state_eval \<sigma> v"
+                and "\<And>v. v \<notin> V \<Longrightarrow> state_eval \<nu> v = state_eval \<mu> v"
+    using state_space_convexity by metis
+
+  text\<open>The consequence of twinness and convexity:
+       \<open>w\<close> can be set to \<open>v\<close>'s current
+       value without disturbing anything else.\<close>
+  lemma twin_update:
+    assumes "twin_var v w"
+    obtains \<nu> where "fol_equal_everywhere_but w \<mu> \<nu>"
+                and "state_eval \<nu> w = state_eval \<mu> v"
+  proof -
+    have "state_eval \<mu> v \<in> var_vals w"
+      using assms unfolding twin_var_def var_vals_def by blast
+    then obtain \<sigma> where \<sigma>: "state_eval \<sigma> w = state_eval \<mu> v"
+      unfolding var_vals_def by blast
+    obtain \<nu> where n1: "\<And>u. u \<in> {w} \<Longrightarrow> state_eval \<nu> u = state_eval \<sigma> u"
+               and n2: "\<And>u. u \<notin> {w} \<Longrightarrow> state_eval \<nu> u = state_eval \<mu> u"
+      using state_mixI by blast
+    have "fol_equal_everywhere_but w \<mu> \<nu>"
+      using n2 by (simp add: fol_equal_everywhere_but_def fol_states_agree_on_def)
+    moreover have "state_eval \<nu> w = state_eval \<mu> v"
+      using n1 \<sigma> by simp
+    ultimately show thesis by (rule that)
+  qed
+
   subsubsection\<open>Elementary Axioms\<close>
 
 text \<open>

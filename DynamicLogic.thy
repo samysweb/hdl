@@ -298,6 +298,85 @@ shows "\<Turnstile>[dyn_eval] ((FOL (eqPred v w)) \<Rrightarrow> (\<phi> \<Rrigh
       dynamic_theory_eq_axioms dynamic_theory_eq_def folCore.fol_equal_everywhere_but_def
       fol_states_agree_on_def)
 
+lemma eqPred_fv_sem:
+  assumes vw: "v \<noteq> w"
+      and xv: "x \<noteq> v"
+      and xw: "x \<noteq> w"
+    shows "\<not> dyn_fv_sem (FOL (eqPred v w)) x"
+  using eqPred_sound vw xv xw
+  unfolding dyn_fv_sem.simps
+  unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
+  by metis
+
+fun eqPredV :: "'var list \<Rightarrow> 'var list \<Rightarrow> ('atom, 'var) fol_formula"
+  where
+      "eqPredV (v # vs) (w # ws) = (eqPred v w) foland (eqPredV vs ws)"
+    | "eqPredV [] [] = FOLTRUE"
+    | "eqPredV vs ws = undefined"
+
+lemma eqPredV_fv_sem_subset:
+  fixes vs :: "'var list"
+    and ws :: "'var list"
+  assumes "disjnt (set vs) (set ws)"
+      and "length vs = length ws"
+    shows "Collect (dyn_fv_sem (FOL (eqPredV vs ws))) \<subseteq> set vs \<union> set ws"
+  using assms
+proof (induct vs arbitrary: ws)
+  case Nil
+  then have ws_nil: "ws = []" by simp
+  have base: "\<And>u. \<not> dyn_fv_sem (FOL FOLTRUE) u"
+    by (rule dyn_fv_sem_valid[OF dyn_true_valid[unfolded DYNTRUE_def]])
+  have "Collect (dyn_fv_sem (FOL FOLTRUE)) = {}"
+    using base by blast
+  then show ?case
+    unfolding ws_nil
+    by (simp only: eqPredV.simps) simp
+next
+  case (Cons v vs)
+
+  obtain w ws' where ws_def: "ws = w # ws'"
+    using Cons.prems(2) by (cases ws) auto
+
+  have vw_neq: "v \<noteq> w"
+    using Cons.prems(1) ws_def by (auto simp add: disjnt_def)
+  have disj': "disjnt (set vs) (set ws')"
+    using Cons.prems(1) ws_def by (auto simp add: disjnt_def)
+  have len': "length vs = length ws'"
+    using Cons.prems(2) ws_def by simp
+
+  have IH: "Collect (dyn_fv_sem (FOL (eqPredV vs ws'))) \<subseteq> set vs \<union> set ws'"
+    by (rule Cons.hyps[OF disj' len'])
+
+  have head: "Collect (dyn_fv_sem (FOL (eqPred v w))) \<subseteq> {v, w}"
+    using eqPred_fv_sem
+    using vw_neq by blast
+
+  text\<open>\<open>eqPredV\<close> on a cons is semantically the conjunction of head and tail.\<close>
+  have unfold_eq: "\<And>\<mu>. dyn_eval (FOL (eqPredV (v # vs) (w # ws'))) \<mu>
+                     = dyn_eval ((FOL (eqPred v w)) and (FOL (eqPredV vs ws'))) \<mu>"
+    using vw_neq
+    by simp
+
+  have main: "Collect (dyn_fv_sem (FOL (eqPredV (v # vs) (w # ws'))))
+                \<subseteq> set (v # vs) \<union> set (w # ws')"
+  proof -
+    have "Collect (dyn_fv_sem (FOL (eqPredV (v # vs) (w # ws'))))
+            = Collect (dyn_fv_sem ((FOL (eqPred v w)) and (FOL (eqPredV vs ws'))))"
+      by auto
+    also have "... \<subseteq> Collect (dyn_fv_sem (FOL (eqPred v w)))
+                       \<union> Collect (dyn_fv_sem (FOL (eqPredV vs ws')))"
+      by (rule dyn_fv_sem_and_subset)
+    also have "... \<subseteq> {v, w} \<union> (set vs \<union> set ws')"
+      using head IH by blast
+    finally show ?thesis by auto
+  qed
+
+  show ?case
+    unfolding ws_def
+    by (rule main)
+qed
+
+
 end
 
 end
