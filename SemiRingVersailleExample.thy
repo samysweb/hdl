@@ -377,13 +377,52 @@ subsubsection\<open>Putting it together\<close>
 
 theorem example_safe:
   "\<Turnstile>[sr.kat_dl.dyn_eval] Inv \<Rrightarrow> \<lbrakk> ((Impl ; Env) *) \<rbrakk> Inv"
-  using ex_A_covers ex_ws_bound ex_read_ws_disjnt ex_ws_dist
-          ex_fv_monitor ex_fresh_twins ex_impl_bound
-          ex_inv_init
-          ex_inv_pres
-          ex_inv_post
-          ex_nnv ex_modelplex
-  using sr.dt_versaille_syn
-  by presburger
+  proof (rule sr.dt_versaille_syn[
+          where ctl=Ctl,
+          where monitor=Monitor,
+          where J=Inv,
+          where ws="[VEL]",
+          where wsplus="[VELP]",
+          where A="ExA",
+          where Read="ExRead"
+    ])
+    show "Collect (sr.kat_dl.dyn_FV Inv) \<union> Collect (sr.kat_dl.dyn_FV Inv) \<union>
+        Collect (sr.kat_dl.dyn_FV Inv) \<union>
+        Collect (sr.full_prog_fv_syn Ctl) \<union>
+        Collect (sr.full_prog_fv_syn Env) \<union>
+        set [VEL] \<union>
+        ExRead
+        \<subseteq> ExA"
+      using ex_A_covers by blast
+    show "Collect (sr.kat_BV Ctl) \<subseteq> set [VEL]"
+      using ex_ws_bound by blast
+    show "disjnt ExRead (set [VEL])"
+      using ex_read_ws_disjnt by blast
+    show "distinct [VEL]"
+      by simp
+    show "Collect (sr.kat_dl.dyn_FV Monitor) \<subseteq> ExRead \<union> set [VELP]"
+      using ex_fv_monitor by fastforce
+    show "sr.fresh_twins [VEL] ExA [VELP]"
+      using ex_fresh_twins by blast
+    show "Collect (sr.kat_BV Impl) \<inter> ExA \<subseteq> set [VEL]"
+      using ex_impl_bound by blast
+    (* The interesting bits *)
+    (* Safety of original model *)
+    show "\<Turnstile>[sr.kat_dl.dyn_eval] Inv \<Rrightarrow> Inv"
+      by sr.kat_dl.dt_prop
+    show "\<Turnstile>[sr.kat_dl.dyn_eval] Inv \<Rrightarrow> \<lbrakk> Ctl \<rbrakk> \<lbrakk> Env \<rbrakk> Inv"
+      using ex_inv_pres by force
+    show "\<Turnstile>[sr.kat_dl.dyn_eval] Inv \<Rrightarrow> Inv"
+      by sr.kat_dl.dt_prop
+    (* Verification *)
+    show "\<Turnstile>[sr.kat_dl.dyn_eval] Inv \<Rrightarrow>
+              \<lbrakk> Impl \<rbrakk> \<bbbA>\<bbbA> [VELP] .
+                (FOL (semiring_dl_eq.eqPredV [VEL] [VELP]) \<Rrightarrow> Monitor)"
+      using ex_nnv by fastforce
+    (* ModelPlex *)
+    show " \<Turnstile>[sr.kat_dl.dyn_eval] Monitor \<Rrightarrow>
+                           \<langle> Ctl \<rangle> FOL (semiring_dl_eq.eqPredV [VEL] [VELP])"
+      using ex_modelplex by blast
+  qed
 
 end
