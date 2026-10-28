@@ -266,8 +266,6 @@ qed
 
 end
 
-
-
 locale dynamic_theory_eq =
     dynamic_theory atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
     for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
@@ -375,6 +373,22 @@ next
     unfolding ws_def
     by (rule main)
 qed
+
+lemma fol_eqPred_sound:
+  assumes "v1 \<noteq> v2"
+  shows "fol_eval (eqPred v1 v2) \<mu> \<longleftrightarrow> state_eval \<mu> v2 = state_eval \<mu> v1"
+  using eqPred_sound assms by simp
+
+lemma c_eqPred_fv_sem:
+  assumes "v \<noteq> w" "x \<noteq> v" "x \<noteq> w"
+  shows "\<not> dyn_fv_sem (FOL (eqPred v w)) x"
+proof -
+  have "dyn_fv_sem (FOL (eqPred v w)) x = dyn_fv_sem (FOL (eqPred v w)) x"
+    by simp
+  then show ?thesis
+    using eqPred_fv_sem[OF assms] by simp
+qed
+
 
 
 end

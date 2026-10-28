@@ -432,8 +432,54 @@ proof -
   finally show ?thesis
     by dt_prop
 qed
+
+lemma dt_box_K2:
+  assumes "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<chi>)"
+  shows "\<Turnstile>[dyn_eval] (\<lbrakk>\<pi>\<rbrakk>\<phi>) \<Rrightarrow> ((\<lbrakk>\<pi>\<rbrakk>\<psi>) \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk>\<chi>))"
+proof -
+  have "\<Turnstile>[dyn_eval] (\<lbrakk>\<pi>\<rbrakk>\<phi>) \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk>(\<psi> \<Rrightarrow> \<chi>))"
+    using assms by (rule dt_box_M)
+  moreover have "\<Turnstile>[dyn_eval] (\<lbrakk>\<pi>\<rbrakk>(\<psi> \<Rrightarrow> \<chi>)) \<Rrightarrow> ((\<lbrakk>\<pi>\<rbrakk>\<psi>) \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk>\<chi>))"
+    by (rule dyn_axiom_K)
+  ultimately show ?thesis
+    by dt_prop
+qed
+
+lemma dt_box_dia_K:
+  assumes "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<chi>)"
+  shows "\<Turnstile>[dyn_eval] (\<lbrakk>\<pi>\<rbrakk>\<phi>) \<Rrightarrow> ((\<langle>\<pi>\<rangle>\<psi>) \<Rrightarrow> (\<langle>\<pi>\<rangle>\<chi>))"
+proof -
+  have "\<Turnstile>[dyn_eval] (\<lbrakk>\<pi>\<rbrakk>\<phi>) \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk>(\<psi> \<Rrightarrow> \<chi>))"
+    using assms by (rule dt_box_M)
+  moreover have "\<Turnstile>[dyn_eval] (\<lbrakk>\<pi>\<rbrakk>(\<psi> \<Rrightarrow> \<chi>)) \<Rrightarrow> ((\<langle>\<pi>\<rangle>\<psi>) \<Rrightarrow> (\<langle>\<pi>\<rangle>\<chi>))"
+    by (rule dt_diamond_K)
+  ultimately show ?thesis
+    by dt_prop
+qed
  
-  
+lemma c_dia_mono:
+  assumes "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<psi>"
+  shows "\<Turnstile>[dyn_eval] (\<langle>\<pi>\<rangle>\<phi>) \<Rrightarrow> (\<langle>\<pi>\<rangle>\<psi>)"
+proof -
+  have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>(\<phi> \<Rrightarrow> \<psi>)"
+    using assms by (rule dt_box_G)
+  moreover have "\<Turnstile>[dyn_eval] (\<lbrakk>\<pi>\<rbrakk>(\<phi> \<Rrightarrow> \<psi>)) \<Rrightarrow> ((\<langle>\<pi>\<rangle>\<phi>) \<Rrightarrow> (\<langle>\<pi>\<rangle>\<psi>))"
+    by (rule dt_diamond_K)
+  ultimately show ?thesis
+    by dt_prop
+qed
+
+lemma c_all_K2:
+  assumes "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<chi>)"
+  shows "\<Turnstile>[dyn_eval] (\<bbbA> v . \<phi>) \<Rrightarrow> ((\<bbbA> v . \<psi>) \<Rrightarrow> (\<bbbA> v . \<chi>))"
+proof -
+  have "\<Turnstile>[dyn_eval] (\<bbbA> v . \<phi>) \<Rrightarrow> (\<bbbA> v . (\<psi> \<Rrightarrow> \<chi>))"
+    using assms by (rule dt_fol_M)
+  moreover have "\<Turnstile>[dyn_eval] (\<bbbA> v . (\<psi> \<Rrightarrow> \<chi>)) \<Rrightarrow> ((\<bbbA> v . \<psi>) \<Rrightarrow> (\<bbbA> v . \<chi>))"
+    by (rule dyn_axiom_F1)
+  ultimately show ?thesis
+    by dt_prop
+qed
 
 
 end
@@ -585,7 +631,6 @@ assumes "disjnt (set vs) (set ws)"
   using dt_prop_uncurry
   by (meson dt_prop_conjI dt_prop_imp_trans dyn_hilbert_axiom_conj_e1
       dyn_hilbert_axiom_conj_e2)
-
 
 end
 
