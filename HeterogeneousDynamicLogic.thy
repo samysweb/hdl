@@ -664,6 +664,20 @@ fun is_fml_pure :: "nat \<Rightarrow> (
   | "is_fml_pure i (FOL_ALL (Inr v) \<phi>) = ((i=1) \<and> (is_fml_pure i \<phi>))"
   | "is_fml_pure i (BOX \<pi> \<phi>) = ((is_kat_prog_pure i \<pi>) \<and> (is_fml_pure i \<phi>))"
 
+
+fun is_fml_pure_simple :: "nat \<Rightarrow> (
+                      ('atom1, 'atom2, 'atom_comm) het_atom,
+                      'var1 + 'var2,
+                      ('prog1, 'prog2) het_prog
+                  ) dyn_formula \<Rightarrow> bool"
+  where
+    "is_fml_pure_simple i (FOL \<phi>) = is_fol_pure i \<phi>"
+  | "is_fml_pure_simple i (AND \<phi> \<psi>) = ((is_fml_pure_simple i \<phi>) \<and> (is_fml_pure_simple i \<psi>))"
+  | "is_fml_pure_simple i (NOT \<phi>) = is_fml_pure_simple i \<phi>"
+  | "is_fml_pure_simple i (FOL_ALL (Inl v) \<phi>) = ((i=0) \<and> (is_fml_pure_simple i \<phi>))"
+  | "is_fml_pure_simple i (FOL_ALL (Inr v) \<phi>) = ((i=1) \<and> (is_fml_pure_simple i \<phi>))"
+  | "is_fml_pure_simple i (BOX \<pi> \<phi>) = ((is_het_prog_pure i \<pi>) \<and> (is_fml_pure_simple i \<phi>))"
+
 fun fol_purify_1 :: "(
                         ('atom1, 'atom2, 'atom_comm) het_atom,
                         'var1 + 'var2
@@ -705,6 +719,12 @@ fun fol_heterify_2 :: "(
   | "fol_heterify_2 (folnot \<phi>) = (folnot (fol_heterify_2 \<phi>))"
   | "fol_heterify_2 (folall v \<phi>) = (folall (Inr v) (fol_heterify_2 \<phi>))"
 
+fun prog_purify_simple_1 :: "('prog1, 'prog2) het_prog
+                         \<Rightarrow> 'prog1"
+  where
+    "prog_purify_simple_1 (PROG1 \<pi>) = \<pi>"
+  | "prog_purify_simple_1 \<pi> = undefined"
+
 fun prog_purify_1 :: "(
                         ('atom1, 'atom2, 'atom_comm) het_atom,
                         'var1 + 'var2,
@@ -739,6 +759,19 @@ fun fml_purify_1 :: "(
   | "fml_purify_1 (FOL_ALL (Inr v) \<phi>) = undefined"
   | "fml_purify_1 (BOX \<pi> \<phi>) = (BOX (prog_purify_1 \<pi>) (fml_purify_1 \<phi>))"
 
+fun fml_purify_simple_1 :: "(
+                      ('atom1, 'atom2, 'atom_comm) het_atom,
+                      'var1 + 'var2,
+                      ('prog1, 'prog2) het_prog
+                  ) dyn_formula \<Rightarrow> ('atom1,'var1,'prog1) dyn_formula"
+  where
+    "fml_purify_simple_1 (FOL \<phi>) = (FOL (fol_purify_1 \<phi>))"
+  | "fml_purify_simple_1 (AND \<phi> \<psi>) = (AND (fml_purify_simple_1 \<phi>) (fml_purify_simple_1 \<psi>))"
+  | "fml_purify_simple_1 (NOT \<phi>) = (NOT (fml_purify_simple_1 \<phi>))"
+  | "fml_purify_simple_1 (FOL_ALL (Inl v) \<phi>) = (FOL_ALL v (fml_purify_simple_1 \<phi>))"
+  | "fml_purify_simple_1 (FOL_ALL (Inr v) \<phi>) = undefined"
+  | "fml_purify_simple_1 (BOX \<pi> \<phi>) = (BOX (prog_purify_simple_1 \<pi>) (fml_purify_simple_1 \<phi>))"
+
 fun fol_purify_2 :: "(
                         ('atom1, 'atom2, 'atom_comm) het_atom,
                         'var1 + 'var2
@@ -767,6 +800,12 @@ fun prog_purify_2 :: "(
     "prog_purify_2 (KATPROG (HPROG (PROG2 \<pi>))) = \<pi>"
   | "prog_purify_2 \<pi> = undefined"
 
+fun prog_purify_simple_2 :: "('prog1, 'prog2) het_prog
+                         \<Rightarrow> 'prog2"
+  where
+    "prog_purify_simple_2 (PROG2 \<pi>) = \<pi>"
+  | "prog_purify_simple_2 \<pi> = undefined"
+
 fun fml_purify_2 :: "(
                       ('atom1, 'atom2, 'atom_comm) het_atom,
                       'var1 + 'var2,
@@ -787,6 +826,19 @@ fun fml_purify_2 :: "(
   | "fml_purify_2 (FOL_ALL (Inr v) \<phi>) = (FOL_ALL v (fml_purify_2 \<phi>))"
   | "fml_purify_2 (FOL_ALL (Inl v) \<phi>) = undefined"
   | "fml_purify_2 (BOX \<pi> \<phi>) = (BOX (prog_purify_2 \<pi>) (fml_purify_2 \<phi>))"
+
+fun fml_purify_simple_2 :: "(
+                      ('atom1, 'atom2, 'atom_comm) het_atom,
+                      'var1 + 'var2,
+                      ('prog1, 'prog2) het_prog
+                  ) dyn_formula \<Rightarrow> ('atom2,'var2,'prog2) dyn_formula"
+  where
+    "fml_purify_simple_2 (FOL \<phi>) = (FOL (fol_purify_2 \<phi>))"
+  | "fml_purify_simple_2 (AND \<phi> \<psi>) = (AND (fml_purify_simple_2 \<phi>) (fml_purify_simple_2 \<psi>))"
+  | "fml_purify_simple_2 (NOT \<phi>) = (NOT (fml_purify_simple_2 \<phi>))"
+  | "fml_purify_simple_2 (FOL_ALL (Inr v) \<phi>) = (FOL_ALL v (fml_purify_simple_2 \<phi>))"
+  | "fml_purify_simple_2 (FOL_ALL (Inl v) \<phi>) = undefined"
+  | "fml_purify_simple_2 (BOX \<pi> \<phi>) = (BOX (prog_purify_simple_2 \<pi>) (fml_purify_simple_2 \<phi>))"
 
 lemma purify_heterify_inverse:
   "(fol_purify_1 (fol_heterify_1 P)) = P"
@@ -821,6 +873,707 @@ text\<open>Based on the purity definition above, we can show the semantic implic
 of purity of a formula w.r.t. dynamic theory 0/1:
 A formula holds in the individual theory iff it holds for all adjoined states:
 \<close>
+
+lemma dyn_het_simple_equiv_0:
+  assumes "is_fml_pure_simple 0 \<phi>"
+  shows "((dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) s1) \<longrightarrow>
+           (\<forall> s2 . (het_dl.dyn_eval \<phi> (s1,s2)))) \<and>
+          ((\<forall> s2 . (het_dl.dyn_eval \<phi> (s1,s2))) \<longrightarrow>
+           (dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) s1))"
+proof -
+  have reformulatation: "\<And> \<phi> \<mu> .  is_fml_pure_simple 0 \<phi> \<Longrightarrow> 
+        ((dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>)) \<longrightarrow>
+         (het_dl.dyn_eval \<phi> \<mu>)) \<and>
+        ((het_dl.dyn_eval \<phi> \<mu>) \<longrightarrow>
+         (dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>)))"
+  proof -
+    fix \<phi>
+    show "\<And> \<mu> .  is_fml_pure_simple 0 \<phi> \<Longrightarrow> 
+        ((dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>)) \<longrightarrow>
+         (het_dl.dyn_eval \<phi> \<mu>)) \<and>
+        ((het_dl.dyn_eval \<phi> \<mu>) \<longrightarrow>
+         (dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>)))"
+    proof (induct \<phi>)
+      case (FOL \<psi>)
+
+      have "is_fol_pure 0 \<psi>"
+        using FOL by auto
+
+      then have "\<And> \<mu> . (dyn_log_1.fol_eval (fol_purify_1 \<psi>) (fst \<mu>) \<longrightarrow>
+     het_fol.fol_eval \<psi> \<mu>) \<and>
+    (het_fol.fol_eval \<psi> \<mu> \<longrightarrow>
+     dyn_log_1.fol_eval (fol_purify_1 \<psi>) (fst \<mu>))"
+        proof (induct \<psi>)
+          case (ATOM x)
+          then show ?case
+          proof (induct x)
+            case (ATOM1 x)
+            then show ?case
+              unfolding fol_purify_1.simps
+              unfolding dyn_log_1.fol_eval.simps
+              unfolding het_fol.fol_eval.simps
+              unfolding het_atom_eval.simps
+              by simp
+          next
+            case (ATOM2 x)
+            then show ?case
+              unfolding is_fol_pure.simps
+              unfolding is_atom_pure.simps
+              by linarith
+          next
+            case (ATOMC x)
+            then show ?case
+              unfolding is_fol_pure.simps
+              unfolding is_atom_pure.simps
+              by simp
+          qed
+        next
+          case (AND \<psi>1 \<psi>2)
+          then show ?case
+          unfolding is_fml_pure.simps
+          unfolding fml_purify_1.simps
+          unfolding dyn_log_1.dyn_eval.simps
+          unfolding het_dl_kat.kat_dl.dyn_eval.simps
+          unfolding fol_purify_1.simps
+          unfolding dyn_log_1.fol_eval.simps
+          unfolding het_fol.fol_eval.simps
+          by simp
+        next
+          case (NOT \<psi>)
+          then show ?case
+          unfolding is_fml_pure.simps
+          unfolding fml_purify_1.simps
+          unfolding dyn_log_1.dyn_eval.simps
+          unfolding het_dl_kat.kat_dl.dyn_eval.simps
+          unfolding fol_purify_1.simps
+          unfolding dyn_log_1.fol_eval.simps
+          unfolding het_fol.fol_eval.simps
+          unfolding is_fol_pure.simps
+          by blast
+        next
+          case (FOL_ALL x1a \<psi>)
+          assume fol_pure: "is_fol_pure 0 (folall x1a \<psi>)"
+          then show ?case
+          proof (induct x1a)
+            case (Inl a)
+            assume fol_inl_pure: "is_fol_pure 0 (folall Inl a \<psi>)"
+              have outer_ind_hyp: "(\<And>\<mu>. is_fol_pure 0 \<psi> \<Longrightarrow>
+                   (dyn_log_1.fol_eval (fol_purify_1 \<psi>) (fst \<mu>) \<longrightarrow>
+                    het_fol.fol_eval \<psi> \<mu>) \<and>
+                   (het_fol.fol_eval \<psi> \<mu> \<longrightarrow>
+                    dyn_log_1.fol_eval (fol_purify_1 \<psi>) (fst \<mu>)))"
+                using FOL_ALL.hyps by blast
+            then show ?case
+              unfolding is_fml_pure.simps
+              unfolding fol_purify_1.simps
+              unfolding dyn_log_1.fol_eval.simps
+              unfolding het_fol.fol_eval.simps
+            proof (intro conjI)
+              show "(\<forall>\<omega>. dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) \<omega> \<longrightarrow>
+                            dyn_log_1.fol_eval (fol_purify_1 \<psi>) \<omega>) \<longrightarrow>
+                      (\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inl a) \<mu> \<omega> \<longrightarrow>
+                            het_fol.fol_eval \<psi> \<omega>)"
+              proof (intro impI,intro allI,intro impI)
+                fix \<omega>
+                assume sat_in_dl1: "\<forall>\<omega>. dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) \<omega> \<longrightarrow>
+                           dyn_log_1.fol_eval (fol_purify_1 \<psi>) \<omega>"
+                assume omega_hyp: "het_fol.fol_equal_everywhere_but (Inl a) \<mu> \<omega>"
+                then have "dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) (fst \<omega>)"
+                  unfolding het_fol.fol_equal_everywhere_but_def
+                  unfolding dyn_log_1.fol_equal_everywhere_but_def
+                  unfolding het_fol.fol_states_agree_on_def
+                  unfolding dyn_log_1.fol_states_agree_on_def
+                  unfolding het_state_eval_def
+                  unfolding common_atom_eval_def
+                  by fastforce
+    
+                then show "het_fol.fol_eval \<psi> \<omega>"
+                  using sat_in_dl1
+                  apply (elim allE[of _ "(fst \<omega>)"])
+                  using outer_ind_hyp[of "\<omega>"]
+                  using fol_inl_pure
+                  unfolding is_fol_pure.simps
+                  by blast
+              qed
+              show "(\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inl a) \<mu> \<omega> \<longrightarrow>
+                            het_fol.fol_eval \<psi> \<omega>) \<longrightarrow>
+                      (\<forall>\<omega>. dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) \<omega> \<longrightarrow>
+                            dyn_log_1.fol_eval (fol_purify_1 \<psi>) \<omega>)"
+              proof (intro impI,intro allI,intro impI)
+                fix \<omega>
+                assume sat_in_hdl: "(\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inl a) \<mu> \<omega> \<longrightarrow>
+                            het_fol.fol_eval \<psi> \<omega>)"
+                assume omega_hyp: "dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) \<omega>"
+                then have "het_fol.fol_equal_everywhere_but (Inl a) \<mu> (\<omega>,(snd \<mu>))"
+                  unfolding het_fol.fol_equal_everywhere_but_def
+                  unfolding dyn_log_1.fol_equal_everywhere_but_def
+                  unfolding het_fol.fol_states_agree_on_def
+                  unfolding dyn_log_1.fol_states_agree_on_def
+                  unfolding het_state_eval_def
+                  unfolding common_atom_eval_def
+                  by (metis fst_conv map_sum.simps(1) map_sum.simps(2) snd_conv sumE)
+    
+                then show "dyn_log_1.fol_eval (fol_purify_1 \<psi>) \<omega>"
+                  using sat_in_hdl
+                  apply (elim allE[of _ "(\<omega>, snd \<mu>)"])
+                  using outer_ind_hyp[of "(\<omega>, snd \<mu>)"]
+                  using fol_inl_pure
+                  unfolding is_fol_pure.simps
+                  by force
+              qed
+            qed
+          next
+            case (Inr b)
+            then show ?case
+              unfolding is_fol_pure.simps
+              by linarith
+          qed
+        qed
+      thus ?case
+        unfolding fml_purify_simple_1.simps
+        unfolding dyn_log_1.dyn_eval.simps
+        unfolding het_dl.dyn_eval.simps
+        by blast
+    next
+      case (AND \<phi>1 \<phi>2)
+      then show ?case
+        unfolding fml_purify_simple_1.simps
+        unfolding dyn_log_1.dyn_eval.simps
+        unfolding het_dl.dyn_eval.simps
+        by simp
+    next
+      case (NOT \<phi>)
+      then show ?case
+        unfolding is_fml_pure_simple.simps
+        unfolding fml_purify_simple_1.simps
+        unfolding dyn_log_1.dyn_eval.simps
+        unfolding het_dl.dyn_eval.simps
+        by blast
+    next
+      case (FOL_ALL x1a \<phi>)
+      assume fol_pure: "is_fml_pure_simple 0 (\<bbbA> x1a . \<phi>)"
+      then show ?case
+      proof (induct x1a)
+        case (Inl a)
+        assume fol_inl_pure: "is_fml_pure_simple 0 (\<bbbA> Inl a . \<phi>)"
+          have outer_ind_hyp: "\<And> \<mu> . is_fml_pure_simple 0 \<phi> \<Longrightarrow>
+                (dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>) \<longrightarrow>
+                 het_dl.dyn_eval \<phi> \<mu>) \<and>
+                (het_dl.dyn_eval \<phi> \<mu> \<longrightarrow>
+                 dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>))"
+            using FOL_ALL.hyps by blast
+        then show ?case
+          unfolding is_fml_pure.simps
+          unfolding fml_purify_simple_1.simps
+          unfolding dyn_log_1.dyn_eval.simps
+          unfolding het_dl.dyn_eval.simps
+        proof (intro conjI)
+          show "(\<forall>\<omega>. dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) \<omega> \<longrightarrow>
+                        dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) \<omega>) \<longrightarrow>
+                  (\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inl a) \<mu> \<omega> \<longrightarrow>
+                        het_dl.dyn_eval \<phi> \<omega>)"
+          proof (intro impI,intro allI,intro impI)
+            fix \<omega>
+            assume sat_in_dl1: "\<forall>\<omega>. dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) \<omega> \<longrightarrow>
+             dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) \<omega>"
+            assume omega_hyp: "het_fol.fol_equal_everywhere_but (Inl a) \<mu> \<omega>"
+            then have "dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) (fst \<omega>)"
+              unfolding het_fol.fol_equal_everywhere_but_def
+              unfolding dyn_log_1.fol_equal_everywhere_but_def
+              unfolding het_fol.fol_states_agree_on_def
+              unfolding dyn_log_1.fol_states_agree_on_def
+              unfolding het_state_eval_def
+              unfolding common_atom_eval_def
+              by fastforce
+
+            then show "het_dl.dyn_eval \<phi> \<omega>"
+              using sat_in_dl1
+              apply (elim allE[of _ "(fst \<omega>)"])
+              using outer_ind_hyp[of "\<omega>"]
+              using fol_inl_pure
+              unfolding is_fml_pure_simple.simps
+              by blast
+          qed
+          show "(\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inl a) \<mu> \<omega> \<longrightarrow>
+                        het_dl.dyn_eval \<phi> \<omega>) \<longrightarrow>
+                  (\<forall>\<omega>. dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) \<omega> \<longrightarrow>
+                        dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) \<omega>)"
+          proof (intro impI,intro allI,intro impI)
+            fix \<omega>
+            assume sat_in_hdl: "\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inl a) \<mu> \<omega> \<longrightarrow>
+             het_dl.dyn_eval \<phi> \<omega>"
+            assume omega_hyp: "dyn_log_1.fol_equal_everywhere_but a (fst \<mu>) \<omega>"
+            then have "het_fol.fol_equal_everywhere_but (Inl a) \<mu> (\<omega>,(snd \<mu>))"
+              unfolding het_fol.fol_equal_everywhere_but_def
+              unfolding dyn_log_1.fol_equal_everywhere_but_def
+              unfolding het_fol.fol_states_agree_on_def
+              unfolding dyn_log_1.fol_states_agree_on_def
+              unfolding het_state_eval_def
+              unfolding common_atom_eval_def
+              by (metis fst_conv map_sum.simps(1) map_sum.simps(2) snd_conv sumE)
+
+            then show "dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) \<omega>"
+              using sat_in_hdl
+              apply (elim allE[of _ "(\<omega>, snd \<mu>)"])
+              using outer_ind_hyp[of "(\<omega>, snd \<mu>)"]
+              using fol_inl_pure
+              unfolding is_fml_pure.simps
+              by force
+          qed
+        qed
+      next
+        case (Inr b)
+        then show ?case
+          unfolding is_fml_pure_simple.simps
+          by linarith
+      qed
+    next
+      case (BOX x1a \<phi>)
+      then show ?case
+      proof (induct x1a)
+        have outer_ind_hyp: "\<And> \<mu> . is_fml_pure_simple 0 \<phi> \<Longrightarrow>
+                (dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>) \<longrightarrow>
+                 het_dl.dyn_eval \<phi> \<mu>) \<and>
+                (het_dl.dyn_eval \<phi> \<mu> \<longrightarrow>
+                 dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>))"
+          using BOX.hyps by blast
+          case (PROG1 x)
+            then show ?case
+              unfolding fml_purify_simple_1.simps prog_purify_simple_1.simps
+            proof (intro conjI)
+              assume ind_hyp: "(\<And>\<mu>. is_fml_pure_simple 0 \<phi> \<Longrightarrow>
+                    (dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>) \<longrightarrow>
+                     het_dl.dyn_eval \<phi> \<mu>) \<and>
+                    (het_dl.dyn_eval \<phi> \<mu> \<longrightarrow>
+                     dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) (fst \<mu>)))"
+              assume prog_pure: "is_fml_pure_simple 0 (\<lbrakk> (PROG1 x) \<rbrakk> \<phi>)"
+              show "dyn_log_1.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_1 \<phi>) (fst \<mu>) \<longrightarrow>
+                      het_dl.dyn_eval (\<lbrakk> (PROG1 x) \<rbrakk> \<phi>) \<mu>"
+              proof (intro impI)
+                let ?\<mu>1 = "(fst \<mu>)"
+                let ?\<mu>2 = "(snd \<mu>)"
+
+                assume "dyn_log_1.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_1 \<phi>) ?\<mu>1"
+                then have "\<forall>\<omega>1 \<omega>2. (prog_eval1 x (fst \<mu>) \<omega>1 \<and>
+                  state_eval2 (snd \<mu>) = state_eval2 \<omega>2) \<longrightarrow> het_dl.dyn_eval \<phi> (\<omega>1,\<omega>2)"
+                  proof (intro allI,intro impI)
+                    fix \<omega>1 \<omega>2
+                    show "dyn_log_1.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_1 \<phi>) (fst \<mu>) \<Longrightarrow>
+                           (prog_eval1 x (fst \<mu>) \<omega>1 \<and>
+                                state_eval2 (snd \<mu>) = state_eval2 \<omega>2) \<Longrightarrow>
+                           het_dl.dyn_eval \<phi> (\<omega>1, \<omega>2)"
+                    unfolding dyn_log_1.dyn_eval.simps
+                    apply (elim allE[of _ \<omega>1])
+                    using ind_hyp[of "(\<omega>1,\<omega>2)"]
+                    using prog_pure
+                    unfolding is_fml_pure.simps
+                    by simp
+                qed
+                thus "het_dl.dyn_eval (\<lbrakk> (PROG1 x) \<rbrakk> \<phi>) \<mu>"
+                  unfolding het_dl.dyn_eval.simps
+                  by (metis HeterogeneousDynLog.het_prog_eval.simps(1) HeterogeneousDynLog_axioms
+                      prod.exhaust_sel)
+              qed
+              show "het_dl.dyn_eval (\<lbrakk> (PROG1 x) \<rbrakk> \<phi>) \<mu>
+                    \<longrightarrow> dyn_log_1.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_1 \<phi>) (fst \<mu>)"
+              proof (intro impI)
+                let ?\<mu>1 = "(fst \<mu>)"
+                let ?\<mu>2 = "(snd \<mu>)"
+                assume "het_dl.dyn_eval (\<lbrakk> (PROG1 x) \<rbrakk> \<phi>) \<mu>"
+                then have sat_in_het: "het_dl.dyn_eval (\<lbrakk> (PROG1 x) \<rbrakk> \<phi>) (?\<mu>1,?\<mu>2)"
+                  by force
+                have "dyn_log_1.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_1 \<phi>) (fst \<mu>)"
+                  unfolding dyn_log_1.dyn_eval.simps
+                proof (intro allI, intro impI)
+                  fix \<omega>
+                  let ?\<omega>2 = "(snd \<mu>)"
+                  have "prog_eval1 x (fst \<mu>) \<omega> \<Longrightarrow>
+                    (prog_eval1 x (fst \<mu>) \<omega> \<and> state_eval2 (snd \<mu>) = state_eval2 ?\<omega>2) \<longrightarrow>
+                    het_dl.dyn_eval \<phi> (\<omega>, ?\<omega>2) \<Longrightarrow>
+                    dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) \<omega>"
+                    using ind_hyp[of "(\<omega>,?\<omega>2)"]
+                    using prog_pure
+                    unfolding is_fml_pure.simps
+                    by auto
+                  thus "prog_eval1 x (fst \<mu>) \<omega> \<Longrightarrow> dyn_log_1.dyn_eval (fml_purify_simple_1 \<phi>) \<omega>"
+                    using sat_in_het
+                    unfolding het_dl.dyn_eval.simps
+                    apply (elim allE[of _ "(\<omega>,?\<omega>2)"])
+                    unfolding het_dl_kat.full_prog_eval_def
+                    unfolding het_dl_kat.full_prog_eval_int.simps
+                    unfolding het_dl_havoc.full_prog_eval.simps
+                    unfolding het_prog_eval.simps
+                    by blast
+                qed
+                thus "dyn_log_1.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_1 \<phi>) (fst \<mu>)"
+                  by simp
+              qed
+            qed
+          next
+            case (PROG2 x)
+            then show ?case
+              unfolding is_fml_pure_simple.simps
+              unfolding is_het_prog_pure.simps
+              by linarith
+          qed
+        qed
+      qed
+  show ?thesis
+    using assms
+    using reformulatation
+    by auto
+qed
+
+
+lemma dyn_het_simple_equiv_1:
+  assumes "is_fml_pure_simple 1 \<phi>"
+  shows "((dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) s2) \<longrightarrow>
+           (\<forall> s1 . (het_dl.dyn_eval \<phi> (s1,s2)))) \<and>
+          ((\<forall> s1 . (het_dl.dyn_eval \<phi> (s1,s2))) \<longrightarrow>
+           (dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) s2))"
+proof -
+  have reformulatation: "\<And> \<phi> \<mu> .  is_fml_pure_simple 1 \<phi> \<Longrightarrow> 
+        ((dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>)) \<longrightarrow>
+         (het_dl.dyn_eval \<phi> \<mu>)) \<and>
+        ((het_dl.dyn_eval \<phi> \<mu>) \<longrightarrow>
+         (dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>)))"
+  proof -
+    fix \<phi>
+    show "\<And> \<mu> .  is_fml_pure_simple 1 \<phi> \<Longrightarrow> 
+        ((dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>)) \<longrightarrow>
+         (het_dl.dyn_eval \<phi> \<mu>)) \<and>
+        ((het_dl.dyn_eval \<phi> \<mu>) \<longrightarrow>
+         (dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>)))"
+    proof (induct \<phi>)
+      case (FOL \<psi>)
+
+      have "is_fol_pure 1 \<psi>"
+        using FOL by auto
+
+      then have "\<And> \<mu> . (dyn_log_2.fol_eval (fol_purify_2 \<psi>) (snd \<mu>) \<longrightarrow>
+     het_fol.fol_eval \<psi> \<mu>) \<and>
+    (het_fol.fol_eval \<psi> \<mu> \<longrightarrow>
+     dyn_log_2.fol_eval (fol_purify_2 \<psi>) (snd \<mu>))"
+        proof (induct \<psi>)
+          case (ATOM x)
+          then show ?case
+          proof (induct x)
+            case (ATOM2 x)
+            then show ?case
+              unfolding fol_purify_2.simps
+              unfolding dyn_log_2.fol_eval.simps
+              unfolding het_fol.fol_eval.simps
+              unfolding het_atom_eval.simps
+              by simp
+          next
+            case (ATOM1 x)
+            then show ?case
+              unfolding is_fol_pure.simps
+              unfolding is_atom_pure.simps
+              by linarith
+          next
+            case (ATOMC x)
+            then show ?case
+              unfolding is_fol_pure.simps
+              unfolding is_atom_pure.simps
+              by simp
+          qed
+        next
+          case (AND \<psi>1 \<psi>2)
+          then show ?case
+          unfolding is_fml_pure.simps
+          unfolding fml_purify_2.simps
+          unfolding dyn_log_2.dyn_eval.simps
+          unfolding het_dl_kat.kat_dl.dyn_eval.simps
+          unfolding fol_purify_2.simps
+          unfolding dyn_log_2.fol_eval.simps
+          unfolding het_fol.fol_eval.simps
+          by simp
+        next
+          case (NOT \<psi>)
+          then show ?case
+          unfolding is_fml_pure.simps
+          unfolding fml_purify_2.simps
+          unfolding dyn_log_2.dyn_eval.simps
+          unfolding het_dl_kat.kat_dl.dyn_eval.simps
+          unfolding fol_purify_2.simps
+          unfolding dyn_log_2.fol_eval.simps
+          unfolding het_fol.fol_eval.simps
+          unfolding is_fol_pure.simps
+          by blast
+        next
+          case (FOL_ALL x1a \<psi>)
+          assume fol_pure: "is_fol_pure 1 (folall x1a \<psi>)"
+          then show ?case
+          proof (induct x1a)
+            case (Inr a)
+            assume fol_inl_pure: "is_fol_pure 1 (folall Inr a \<psi>)"
+              have outer_ind_hyp: "(\<And>\<mu>. is_fol_pure 1 \<psi> \<Longrightarrow>
+                   (dyn_log_2.fol_eval (fol_purify_2 \<psi>) (snd \<mu>) \<longrightarrow>
+                    het_fol.fol_eval \<psi> \<mu>) \<and>
+                   (het_fol.fol_eval \<psi> \<mu> \<longrightarrow>
+                    dyn_log_2.fol_eval (fol_purify_2 \<psi>) (snd \<mu>)))"
+                using FOL_ALL.hyps by blast
+            then show ?case
+              unfolding is_fml_pure.simps
+              unfolding fol_purify_2.simps
+              unfolding dyn_log_2.fol_eval.simps
+              unfolding het_fol.fol_eval.simps
+            proof (intro conjI)
+              show "(\<forall>\<omega>. dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) \<omega> \<longrightarrow>
+                            dyn_log_2.fol_eval (fol_purify_2 \<psi>) \<omega>) \<longrightarrow>
+                      (\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inr a) \<mu> \<omega> \<longrightarrow>
+                            het_fol.fol_eval \<psi> \<omega>)"
+              proof (intro impI,intro allI,intro impI)
+                fix \<omega>
+                assume sat_in_dl1: "\<forall>\<omega>. dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) \<omega> \<longrightarrow>
+                           dyn_log_2.fol_eval (fol_purify_2 \<psi>) \<omega>"
+                assume omega_hyp: "het_fol.fol_equal_everywhere_but (Inr a) \<mu> \<omega>"
+                then have "dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) (snd \<omega>)"
+                  unfolding het_fol.fol_equal_everywhere_but_def
+                  unfolding dyn_log_2.fol_equal_everywhere_but_def
+                  unfolding het_fol.fol_states_agree_on_def
+                  unfolding dyn_log_2.fol_states_agree_on_def
+                  unfolding het_state_eval_def
+                  unfolding common_atom_eval_def
+                  by fastforce
+    
+                then show "het_fol.fol_eval \<psi> \<omega>"
+                  using sat_in_dl1
+                  apply (elim allE[of _ "(snd \<omega>)"])
+                  using outer_ind_hyp[of "\<omega>"]
+                  using fol_inl_pure
+                  unfolding is_fol_pure.simps
+                  by blast
+              qed
+              show "(\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inr a) \<mu> \<omega> \<longrightarrow>
+                            het_fol.fol_eval \<psi> \<omega>) \<longrightarrow>
+                      (\<forall>\<omega>. dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) \<omega> \<longrightarrow>
+                            dyn_log_2.fol_eval (fol_purify_2 \<psi>) \<omega>)"
+              proof (intro impI,intro allI,intro impI)
+                fix \<omega>
+                assume sat_in_hdl: "(\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inr a) \<mu> \<omega> \<longrightarrow>
+                            het_fol.fol_eval \<psi> \<omega>)"
+                assume omega_hyp: "dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) \<omega>"
+                then have "het_fol.fol_equal_everywhere_but (Inr a) \<mu> ((fst \<mu>),\<omega>)"
+                  unfolding het_fol.fol_equal_everywhere_but_def
+                  unfolding dyn_log_2.fol_equal_everywhere_but_def
+                  unfolding het_fol.fol_states_agree_on_def
+                  unfolding dyn_log_2.fol_states_agree_on_def
+                  unfolding het_state_eval_def
+                  unfolding common_atom_eval_def
+                  by (metis snd_conv map_sum.simps(1) map_sum.simps(2) fst_conv sumE)
+    
+                then show "dyn_log_2.fol_eval (fol_purify_2 \<psi>) \<omega>"
+                  using sat_in_hdl
+                  apply (elim allE[of _ "(fst \<mu>, \<omega>)"])
+                  using outer_ind_hyp[of "(fst \<mu>, \<omega>)"]
+                  using fol_inl_pure
+                  unfolding is_fol_pure.simps
+                  by force
+              qed
+            qed
+          next
+            case (Inl b)
+            then show ?case
+              unfolding is_fol_pure.simps
+              by linarith
+          qed
+        qed
+      thus ?case
+        unfolding fml_purify_simple_2.simps
+        unfolding dyn_log_2.dyn_eval.simps
+        unfolding het_dl.dyn_eval.simps
+        by blast
+    next
+      case (AND \<phi>1 \<phi>2)
+      then show ?case
+        unfolding fml_purify_simple_2.simps
+        unfolding dyn_log_2.dyn_eval.simps
+        unfolding het_dl.dyn_eval.simps
+        by simp
+    next
+      case (NOT \<phi>)
+      then show ?case
+        unfolding is_fml_pure_simple.simps
+        unfolding fml_purify_simple_2.simps
+        unfolding dyn_log_2.dyn_eval.simps
+        unfolding het_dl.dyn_eval.simps
+        by blast
+    next
+      case (FOL_ALL x1a \<phi>)
+      assume fol_pure: "is_fml_pure_simple 1 (\<bbbA> x1a . \<phi>)"
+      then show ?case
+      proof (induct x1a)
+        case (Inr a)
+        assume fol_inl_pure: "is_fml_pure_simple 1 (\<bbbA> Inr a . \<phi>)"
+          have outer_ind_hyp: "\<And> \<mu> . is_fml_pure_simple 1 \<phi> \<Longrightarrow>
+                (dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>) \<longrightarrow>
+                 het_dl.dyn_eval \<phi> \<mu>) \<and>
+                (het_dl.dyn_eval \<phi> \<mu> \<longrightarrow>
+                 dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>))"
+            using FOL_ALL.hyps by blast
+        then show ?case
+          unfolding is_fml_pure.simps
+          unfolding fml_purify_simple_2.simps
+          unfolding dyn_log_2.dyn_eval.simps
+          unfolding het_dl.dyn_eval.simps
+        proof (intro conjI)
+          show "(\<forall>\<omega>. dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) \<omega> \<longrightarrow>
+                        dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) \<omega>) \<longrightarrow>
+                  (\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inr a) \<mu> \<omega> \<longrightarrow>
+                        het_dl.dyn_eval \<phi> \<omega>)"
+          proof (intro impI,intro allI,intro impI)
+            fix \<omega>
+            assume sat_in_dl1: "\<forall>\<omega>. dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) \<omega> \<longrightarrow>
+             dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) \<omega>"
+            assume omega_hyp: "het_fol.fol_equal_everywhere_but (Inr a) \<mu> \<omega>"
+            then have "dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) (snd \<omega>)"
+              unfolding het_fol.fol_equal_everywhere_but_def
+              unfolding dyn_log_2.fol_equal_everywhere_but_def
+              unfolding het_fol.fol_states_agree_on_def
+              unfolding dyn_log_2.fol_states_agree_on_def
+              unfolding het_state_eval_def
+              unfolding common_atom_eval_def
+              by fastforce
+
+            then show "het_dl.dyn_eval \<phi> \<omega>"
+              using sat_in_dl1
+              apply (elim allE[of _ "(snd \<omega>)"])
+              using outer_ind_hyp[of "\<omega>"]
+              using fol_inl_pure
+              unfolding is_fml_pure_simple.simps
+              by blast
+          qed
+          show "(\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inr a) \<mu> \<omega> \<longrightarrow>
+                        het_dl.dyn_eval \<phi> \<omega>) \<longrightarrow>
+                  (\<forall>\<omega>. dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) \<omega> \<longrightarrow>
+                        dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) \<omega>)"
+          proof (intro impI,intro allI,intro impI)
+            fix \<omega>
+            assume sat_in_hdl: "\<forall>\<omega>. het_fol.fol_equal_everywhere_but (Inr a) \<mu> \<omega> \<longrightarrow>
+             het_dl.dyn_eval \<phi> \<omega>"
+            assume omega_hyp: "dyn_log_2.fol_equal_everywhere_but a (snd \<mu>) \<omega>"
+            then have "het_fol.fol_equal_everywhere_but (Inr a) \<mu> ((fst \<mu>),\<omega>)"
+              unfolding het_fol.fol_equal_everywhere_but_def
+              unfolding dyn_log_2.fol_equal_everywhere_but_def
+              unfolding het_fol.fol_states_agree_on_def
+              unfolding dyn_log_2.fol_states_agree_on_def
+              unfolding het_state_eval_def
+              unfolding common_atom_eval_def
+              by (metis snd_conv map_sum.simps(1) map_sum.simps(2) fst_conv sumE)
+
+            then show "dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) \<omega>"
+              using sat_in_hdl
+              apply (elim allE[of _ "(fst \<mu>,\<omega>)"])
+              using outer_ind_hyp[of "(fst \<mu>,\<omega>)"]
+              using fol_inl_pure
+              unfolding is_fml_pure.simps
+              by force
+          qed
+        qed
+      next
+        case (Inl b)
+        then show ?case
+          unfolding is_fml_pure_simple.simps
+          by linarith
+      qed
+    next
+      case (BOX x1a \<phi>)
+      then show ?case
+      proof (induct x1a)
+        have outer_ind_hyp: "\<And> \<mu> . is_fml_pure_simple 1 \<phi> \<Longrightarrow>
+                (dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>) \<longrightarrow>
+                 het_dl.dyn_eval \<phi> \<mu>) \<and>
+                (het_dl.dyn_eval \<phi> \<mu> \<longrightarrow>
+                 dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>))"
+          using BOX.hyps by blast
+          case (PROG2 x)
+            then show ?case
+              unfolding fml_purify_simple_2.simps prog_purify_simple_2.simps
+            proof (intro conjI)
+              assume ind_hyp: "(\<And>\<mu>. is_fml_pure_simple 1 \<phi> \<Longrightarrow>
+                    (dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>) \<longrightarrow>
+                     het_dl.dyn_eval \<phi> \<mu>) \<and>
+                    (het_dl.dyn_eval \<phi> \<mu> \<longrightarrow>
+                     dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) (snd \<mu>)))"
+              assume prog_pure: "is_fml_pure_simple 1 (\<lbrakk> (PROG2 x) \<rbrakk> \<phi>)"
+              show "dyn_log_2.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_2 \<phi>) (snd \<mu>) \<longrightarrow>
+                      het_dl.dyn_eval (\<lbrakk> (PROG2 x) \<rbrakk> \<phi>) \<mu>"
+              proof (intro impI)
+                let ?\<mu>1 = "(snd \<mu>)"
+                let ?\<mu>2 = "(fst \<mu>)"
+
+                assume "dyn_log_2.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_2 \<phi>) ?\<mu>1"
+                then have "\<forall>\<omega>1 \<omega>2. (prog_eval2 x (snd \<mu>) \<omega>1 \<and>
+                  state_eval1 (fst \<mu>) = state_eval1 \<omega>2) \<longrightarrow> het_dl.dyn_eval \<phi> (\<omega>2,\<omega>1)"
+                  proof (intro allI,intro impI)
+                    fix \<omega>1 \<omega>2
+                    show "dyn_log_2.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_2 \<phi>) (snd \<mu>) \<Longrightarrow>
+                           (prog_eval2 x (snd \<mu>) \<omega>1 \<and>
+                                state_eval1 (fst \<mu>) = state_eval1 \<omega>2) \<Longrightarrow>
+                           het_dl.dyn_eval \<phi> (\<omega>2,\<omega>1)"
+                    unfolding dyn_log_2.dyn_eval.simps
+                    apply (elim allE[of _ \<omega>1])
+                    using ind_hyp[of "(\<omega>2,\<omega>1)"]
+                    using prog_pure
+                    unfolding is_fml_pure.simps
+                    by simp
+                qed
+                thus "het_dl.dyn_eval (\<lbrakk> (PROG2 x) \<rbrakk> \<phi>) \<mu>"
+                  unfolding het_dl.dyn_eval.simps
+                  by (metis HeterogeneousDynLog.het_prog_eval.simps(2) HeterogeneousDynLog_axioms
+                      prod.exhaust_sel)
+              qed
+              show "het_dl.dyn_eval (\<lbrakk> (PROG2 x) \<rbrakk> \<phi>) \<mu>
+                    \<longrightarrow> dyn_log_2.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_2 \<phi>) (snd \<mu>)"
+              proof (intro impI)
+                let ?\<mu>1 = "(snd \<mu>)"
+                let ?\<mu>2 = "(fst \<mu>)"
+                assume "het_dl.dyn_eval (\<lbrakk> (PROG2 x) \<rbrakk> \<phi>) \<mu>"
+                then have sat_in_het: "het_dl.dyn_eval (\<lbrakk> (PROG2 x) \<rbrakk> \<phi>) (?\<mu>2,?\<mu>1)"
+                  by force
+                have "dyn_log_2.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_2 \<phi>) (snd \<mu>)"
+                  unfolding dyn_log_2.dyn_eval.simps
+                proof (intro allI, intro impI)
+                  fix \<omega>
+                  let ?\<omega>2 = "(fst \<mu>)"
+                  have "prog_eval2 x (snd \<mu>) \<omega> \<Longrightarrow>
+                    (prog_eval2 x (snd \<mu>) \<omega> \<and> state_eval1 (fst \<mu>) = state_eval1 ?\<omega>2) \<longrightarrow>
+                    het_dl.dyn_eval \<phi> (?\<omega>2,\<omega>) \<Longrightarrow>
+                    dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) \<omega>"
+                    using ind_hyp[of "(?\<omega>2,\<omega>)"]
+                    using prog_pure
+                    unfolding is_fml_pure.simps
+                    by auto
+                  thus "prog_eval2 x (snd \<mu>) \<omega> \<Longrightarrow> dyn_log_2.dyn_eval (fml_purify_simple_2 \<phi>) \<omega>"
+                    using sat_in_het
+                    unfolding het_dl.dyn_eval.simps
+                    apply (elim allE[of _ "(?\<omega>2,\<omega>)"])
+                    unfolding het_dl_kat.full_prog_eval_def
+                    unfolding het_dl_kat.full_prog_eval_int.simps
+                    unfolding het_dl_havoc.full_prog_eval.simps
+                    unfolding het_prog_eval.simps
+                    by blast
+                qed
+                thus "dyn_log_2.dyn_eval (\<lbrakk> x \<rbrakk> fml_purify_simple_2 \<phi>) (snd \<mu>)"
+                  by simp
+              qed
+            qed
+          next
+            case (PROG1 x)
+            then show ?case
+              unfolding is_fml_pure_simple.simps
+              unfolding is_het_prog_pure.simps
+              by linarith
+          qed
+        qed
+      qed
+  show ?thesis
+    using assms
+    using reformulatation
+    by auto
+qed
 
 lemma dyn_het_equiv_0:
   assumes "is_fml_pure 0 \<phi>"
@@ -1653,6 +2406,25 @@ lemma dyn_axiom_R1:
   using assms
   unfolding theory_valid_def
   using dyn_het_equiv_1[of \<phi>]
+  by auto
+
+lemma dyn_axiom_simple_R0:
+  assumes "is_fml_pure_simple 0 \<phi>"
+      and "\<Turnstile>[dyn_log_1.dyn_eval] (fml_purify_simple_1 \<phi>)"
+    shows "\<Turnstile>[het_dl.dyn_eval] \<phi>"
+  using assms
+  unfolding theory_valid_def
+  using dyn_het_simple_equiv_0[of \<phi>]
+  by auto
+
+
+lemma dyn_axiom_simple_R1:
+  assumes "is_fml_pure_simple 1 \<phi>"
+      and "\<Turnstile>[dyn_log_2.dyn_eval] (fml_purify_simple_2 \<phi>)"
+    shows "\<Turnstile>[het_dl.dyn_eval] \<phi>"
+  using assms
+  unfolding theory_valid_def
+  using dyn_het_simple_equiv_1[of \<phi>]
   by auto
 
 subsubsection\<open>Inductive Expressivity\<close>
