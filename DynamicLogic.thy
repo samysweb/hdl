@@ -10,7 +10,7 @@ begin
 lemma dyn_axiom_V:
   fixes \<phi> :: "('atom,'var,'prog) dyn_formula"
   fixes \<pi> :: "'prog"
-  assumes "((Collect (dyn_FV \<phi>)) \<inter> (Collect (dyn_prog_bv_sem \<pi>))) = {}"
+  assumes "((Collect (dyn_fv_sem \<phi>)) \<inter> (Collect (dyn_prog_bv_sem \<pi>))) = {}"
   shows "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>\<phi>"
   unfolding theory_valid_def
   unfolding IMP_def
@@ -55,7 +55,7 @@ lemma dyn_axiom_B:
     shows "\<Turnstile>[dyn_eval] (\<bbbA> v . \<lbrakk>\<pi>\<rbrakk>\<phi>) \<Lleftarrow>\<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk> (\<bbbA> v . \<phi>))"
 proof -
   have dir1: "\<Turnstile>[dyn_eval] (\<bbbA> v . \<lbrakk>\<pi>\<rbrakk>\<phi>) \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk> (\<bbbA> v . \<phi>))"
-  proof (simp, intro allI)
+  proof ((simp add: dyn_sem), intro allI)
     fix \<mu>
     have not_bv: "\<not> dyn_prog_bv_sem \<pi> v"
       using assms
@@ -210,7 +210,8 @@ proof -
     have "\<Turnstile>[dyn_eval] (\<bbbA> v . \<phi>) \<Rrightarrow> \<phi>"
       unfolding theory_valid_def
       unfolding dyn_eval.simps
-      using fol_equal_everywhere_but_def fol_states_agree_on_def by force
+      using fol_equal_everywhere_but_def fol_states_agree_on_def
+      by (auto simp add: dyn_sem)
 
     then have "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk> ((\<bbbA> v . \<phi>) \<Rrightarrow> \<phi>)"
       using dyn_axiom_G
@@ -222,7 +223,7 @@ proof -
       by blast
 
     then have "\<Turnstile>[dyn_eval] \<bbbA> v . ((\<lbrakk>\<pi>\<rbrakk> (\<bbbA> v . \<phi>)) \<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk>\<phi>))"
-      using dyn_hilbert_axiom_G
+      using dyn_axiom_A
       by blast
 
     then have all_distributed: "\<Turnstile>[dyn_eval] ((\<bbbA> v . \<lbrakk>\<pi>\<rbrakk> (\<bbbA> v . \<phi>)) \<Rrightarrow> (\<bbbA> v . \<lbrakk>\<pi>\<rbrakk>\<phi>))"
@@ -236,8 +237,66 @@ proof -
 
   show ?thesis
     using dir1 dir2
-    by simp
+    by (auto simp add: dyn_sem)
 qed
+
+
+subsection\<open>Determinism and Totality\<close>
+text\<open>
+If a program has exactly one successor state, box and diamond coincide for it.
+This is the generic core of the NDL axiom schema $[p]\phi \leftrightarrow \langle p \rangle \phi$.
+\<close>
+
+lemma box_diamond_iff:
+  assumes total_det: "\<And>\<mu>. \<exists>!\<omega>. prog_eval \<pi> \<mu> \<omega>"
+  shows "dyn_eval (\<langle>\<pi>\<rangle> \<phi>) \<mu> = dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<mu>"
+proof -
+  obtain \<omega> where succ: "prog_eval \<pi> \<mu> \<omega>" and uniq: "\<And>\<upsilon>. prog_eval \<pi> \<mu> \<upsilon> \<Longrightarrow> \<upsilon> = \<omega>"
+    using total_det[of \<mu>] by blast
+  have box: "dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<mu> = dyn_eval \<phi> \<omega>"
+    unfolding dyn_eval.simps
+    using succ uniq
+    by blast
+  have "dyn_eval (\<langle>\<pi>\<rangle> \<phi>) \<mu> = (\<exists>\<upsilon>. prog_eval \<pi> \<mu> \<upsilon> \<and> dyn_eval \<phi> \<upsilon>)"
+    unfolding DIAMOND_def by auto
+  also have "... = dyn_eval \<phi> \<omega>"
+    using succ uniq by blast
+  finally show ?thesis using box by simp
+qed
+
+end
+
+
+
+locale dynamic_theory_eq =
+    dynamic_theory atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
+    for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
+    and atom_fv_syn :: "'atom \<Rightarrow> 'var \<Rightarrow> bool"
+    and state_eval :: "'state \<Rightarrow> 'var \<Rightarrow> 'val"
+    and prog_eval :: "'prog \<Rightarrow> 'state \<Rightarrow> 'state \<Rightarrow> bool"
+    and dyn_prog_FV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
++
+fixes eqPred :: "'var \<Rightarrow> 'var \<Rightarrow> ('atom, 'var) fol_formula"
+(*assumes infinite_nat_vars: "\<not> (finite (nat_assignable_vars state_eval val2nat))"*)
+assumes eqPred_sound: "\<forall> v1 v2 .
+          (v1 \<noteq> v2)
+          \<longrightarrow> (\<forall> \<mu> .
+                dyn_eval (FOL (eqPred v1 v2)) \<mu>
+                \<longleftrightarrow>
+                ((state_eval \<mu> v2) = (state_eval \<mu> v1))
+              )"
+begin
+lemma eq_all_axiom:
+  fixes v :: "'var"
+  and w :: "'var"
+  and \<phi> :: "('atom,'var,'prog) dyn_formula"
+assumes "v \<noteq> w"
+shows "\<Turnstile>[dyn_eval] ((FOL (eqPred v w)) \<Rrightarrow> (\<phi> \<Rrightarrow>(\<bbbA> v . ((FOL (eqPred v w)) \<Rrightarrow> \<phi>))))"
+  using eqPred_sound assms
+  apply (auto simp add: dyn_sem)
+  by (smt (verit, ccfv_SIG) dyn_differing_state_eval_due_to_vars dynamic_theory_def
+      dynamic_theory_eq_axioms dynamic_theory_eq_def folCore.fol_equal_everywhere_but_def
+      fol_states_agree_on_def)
 
 end
 

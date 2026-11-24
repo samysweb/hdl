@@ -103,7 +103,7 @@ lemma refinementAxiomReplace:
   shows "\<beta> \<le> \<alpha> \<Longrightarrow> \<Turnstile>[dyn_eval] (\<lbrakk>\<alpha>\<rbrakk>\<phi>) \<Rrightarrow> (\<lbrakk>\<beta>\<rbrakk>\<phi>)"
   unfolding theory_valid_def
     using prog_ref_imp[of \<beta> \<alpha>]
-    by auto
+    by (auto simp add: dyn_sem)
 
 lemma rewriteAxiomReplace:
   fixes \<alpha> \<beta> :: "'prog"
@@ -112,7 +112,7 @@ lemma rewriteAxiomReplace:
   unfolding EQUIV_def
   unfolding progEquiv_def
   using refinementAxiomReplace
-  by auto
+  by (auto simp add: dyn_sem)
 
 end
 
