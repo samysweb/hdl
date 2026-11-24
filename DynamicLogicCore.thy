@@ -58,6 +58,10 @@ locale dynamic_theory =
           "\<forall> \<pi> \<mu> \<omega> . ((\<forall> v. ((state_eval \<mu>) v = (state_eval \<omega>) v)) \<longrightarrow> prog_eval \<pi> \<mu> = prog_eval \<pi> \<omega>)"
 begin
 
+  sublocale fol:
+    folCore atom_eval atom_fv_syn state_eval
+    by (simp add: folCore_axioms)
+
   notation BOX ("\<lbrakk> _ \<rbrakk> _" [130, 130] 130)
   
   notation AND (infix "and" 120)
@@ -69,27 +73,32 @@ begin
   Based on the assumptions from above, we can introduce the following syntactic sugar.
   \<close>
 
+  fun FOR_ALL_VEC :: "'var list \<Rightarrow> ('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula"
+    ("\<bbbA>\<bbbA> _ . _" 190) where[dyn_sem]:
+      "FOR_ALL_VEC [] \<phi> = \<phi>"
+    | "FOR_ALL_VEC (x # xs) \<phi> = \<bbbA> x . (FOR_ALL_VEC xs \<phi>)"
+
   definition DYNTRUE :: "('atom,'var,'prog) dyn_formula"
-    where[simp]: "DYNTRUE = (FOL FOLTRUE)"
+    where[dyn_sem]: "DYNTRUE = (FOL FOLTRUE)"
 
   definition IMP :: "('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula"
    (infixr "\<Rrightarrow>" 100)
-   where[simp]: "(a :: ('atom,'var,'prog) dyn_formula) \<Rrightarrow> b = \<rceil>(a and \<rceil>b)"
+   where[dyn_sem]: "(a :: ('atom,'var,'prog) dyn_formula) \<Rrightarrow> b = \<rceil>(a and \<rceil>b)"
   
   definition EQUIV :: "('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula"
    (infixr "\<Lleftarrow>\<Rrightarrow>" 90)
-   where[simp]: "(a :: ('atom,'var,'prog) dyn_formula) \<Lleftarrow>\<Rrightarrow> b = (a \<Rrightarrow> b) and (b \<Rrightarrow> a)"
+   where[dyn_sem]: "(a :: ('atom,'var,'prog) dyn_formula) \<Lleftarrow>\<Rrightarrow> b = (a \<Rrightarrow> b) and (b \<Rrightarrow> a)"
 
   definition OR :: "('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula"
   (infix "or" 110)
-  where[simp]: "((a :: ('atom,'var,'prog) dyn_formula) or (b :: ('atom,'var,'prog) dyn_formula)) = \<rceil>(\<rceil>a and \<rceil>b)"
+  where[dyn_sem]: "((a :: ('atom,'var,'prog) dyn_formula) or (b :: ('atom,'var,'prog) dyn_formula)) = \<rceil>(\<rceil>a and \<rceil>b)"
   
   definition DIAMOND :: "'prog \<Rightarrow> ('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula" 
-    ("\<langle> _ \<rangle> _" 90) where
+    ("\<langle> _ \<rangle> _"  [130, 130] 130) where[dyn_sem]:
     "\<langle>\<pi>\<rangle>\<phi> \<equiv> (\<rceil>\<lbrakk>\<pi>\<rbrakk>\<rceil>\<phi>)"
 
   definition DYN_EX :: "'var \<Rightarrow> ('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula" 
-    ("\<bbbE> _ . _" 190) where[simp]: "\<bbbE> v . \<phi> \<equiv> \<rceil>(\<bbbA> v . \<rceil>\<phi>)"
+    ("\<bbbE> _ . _" 190) where[dyn_sem]: "\<bbbE> v . \<phi> \<equiv> \<rceil>(\<bbbA> v . \<rceil>\<phi>)"
 
   subsection\<open>Semantics\<close>
   text\<open>
@@ -111,7 +120,7 @@ begin
     unfolding FOLTRUE_def
     unfolding theory_valid_def
     unfolding dyn_eval.simps
-    by simp
+    by (auto simp add: dyn_sem)
 
   subsection\<open>Free and Bound Variables\<close>
 
@@ -228,6 +237,91 @@ begin
     unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
     apply simp
     by metis
+
+  lemma dyn_fv_sem_all_intro:
+    assumes "\<not> dyn_fv_sem \<phi> v"
+    shows "\<not> dyn_fv_sem (\<bbbA> a . \<phi>) v"
+    using assms
+  proof -
+    assume not_free_before: "\<not> dyn_fv_sem \<phi> v"
+
+    have dir: "\<And>\<mu>' \<omega>'. fol_equal_everywhere_but v \<mu>' \<omega>' \<Longrightarrow>
+              (\<forall>\<omega>1. fol_equal_everywhere_but a \<mu>' \<omega>1 \<longrightarrow> dyn_eval \<phi> \<omega>1) \<Longrightarrow>
+              (\<forall>\<omega>2. fol_equal_everywhere_but a \<omega>' \<omega>2 \<longrightarrow> dyn_eval \<phi> \<omega>2)"
+    proof -
+      fix \<mu>' \<omega>'
+      assume hv: "fol_equal_everywhere_but v \<mu>' \<omega>'"
+         and hall: "\<forall>\<omega>1. fol_equal_everywhere_but a \<mu>' \<omega>1 \<longrightarrow> dyn_eval \<phi> \<omega>1"
+      show "\<forall>\<omega>2. fol_equal_everywhere_but a \<omega>' \<omega>2 \<longrightarrow> dyn_eval \<phi> \<omega>2"
+      proof (intro allI impI)
+        fix \<omega>2
+        assume ha: "fol_equal_everywhere_but a \<omega>' \<omega>2"
+  
+        obtain \<nu> where nu_cond:
+          "(state_eval \<nu>) a = (state_eval \<omega>2) a \<and> fol_equal_everywhere_but a \<nu> \<mu>'"
+          using state_space_convexity
+          unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
+          by (meson singleton_iff)
+  
+        have nu_a: "fol_equal_everywhere_but a \<mu>' \<nu>"
+          using nu_cond
+          unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
+          by metis
+  
+        have nu_v: "fol_equal_everywhere_but v \<nu> \<omega>2"
+          unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
+        proof (intro allI impI)
+          fix x
+          assume x_neq_v: "x \<noteq> v"
+          show "(state_eval \<nu>) x = (state_eval \<omega>2) x"
+          proof (cases "x = a")
+            case True
+            then show ?thesis using nu_cond by simp
+          next
+            case False
+            have e1: "(state_eval \<nu>) x = (state_eval \<mu>') x"
+              using nu_cond False
+              unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
+              by metis
+            have e2: "(state_eval \<mu>') x = (state_eval \<omega>') x"
+              using hv x_neq_v
+              unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
+              by metis
+            have e3: "(state_eval \<omega>') x = (state_eval \<omega>2) x"
+              using ha False
+              unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
+              by metis
+            show ?thesis using e1 e2 e3 by simp
+          qed
+        qed
+  
+        have nu_sat: "dyn_eval \<phi> \<nu>"
+          using hall nu_a by blast
+  
+        show "dyn_eval \<phi> \<omega>2"
+          using not_free_before nu_v nu_sat
+          unfolding dyn_fv_sem.simps
+          by blast
+      qed
+    qed
+
+    show "\<not> dyn_fv_sem (\<bbbA> a . \<phi>) v"
+    unfolding dyn_fv_sem.simps
+    proof (simp, intro allI, intro impI)
+      fix \<mu> \<omega>
+      assume vmu: "fol_equal_everywhere_but v \<mu> \<omega>"
+  
+      have omv: "fol_equal_everywhere_but v \<omega> \<mu>"
+        using vmu
+        unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
+        by auto
+  
+      show "(\<forall>\<omega>1. fol_equal_everywhere_but a \<mu> \<omega>1 \<longrightarrow> dyn_eval \<phi> \<omega>1) =
+            (\<forall>\<omega>2. fol_equal_everywhere_but a \<omega> \<omega>2 \<longrightarrow> dyn_eval \<phi> \<omega>2)"
+        using dir[OF vmu] dir[OF omv]
+        by blast
+    qed
+  qed
 
   subsubsection\<open>Syntactic Coincidence\<close>
   text\<open>
@@ -866,7 +960,8 @@ begin
       using prog_fv_equal nonrelevant_equal relevant_finite
       unfolding fol_states_agree_on_def
       unfolding fol_state_var_diff_set_def
-      by (metis (mono_tags, lifting) Collect_mono_iff finite_subset)
+      apply (simp add: dyn_sem)
+      by (metis (mono_tags, lifting) Collect_mono finite_subset)
 
     obtain S :: "'var set \<Rightarrow> 'state"
             where S_cond: "\<forall> V. \<forall> w . (((state_eval (S V)) w) = (if w \<in> V then ((state_eval \<mu>2) w) else ((state_eval \<mu>1) w)))"
@@ -1120,23 +1215,22 @@ lemma dyn_hilbert_mp:
   shows "\<Turnstile>[dyn_eval] \<psi>"
   using assms
   unfolding fol_valid_def
-  by force
+  by (auto simp add: dyn_sem)
 
 lemma dyn_hilbert_axiom_1: "\<Turnstile>[dyn_eval]  \<phi> \<Rrightarrow> \<phi>"
-  by simp
+  by (auto simp add: dyn_sem)
 
 lemma dyn_hilbert_axiom_2: "\<Turnstile>[dyn_eval]  (\<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<phi>))"
-  by simp
+  by (auto simp add: dyn_sem)
 
 lemma dyn_hilbert_axiom_3: "\<Turnstile>[dyn_eval] (\<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<xi>)) \<Rrightarrow> ((\<phi> \<Rrightarrow> \<psi>) \<Rrightarrow> (\<phi> \<Rrightarrow> \<xi>))"
-  by simp
+  by (auto simp add: dyn_sem)
 
 lemma dyn_hilbert_axiom_4: "\<Turnstile>[dyn_eval] (\<rceil>\<phi> \<Rrightarrow> \<rceil>\<psi>) \<Rrightarrow> (\<psi> \<Rrightarrow> \<phi>)"
-  by simp
+  by (auto simp add: dyn_sem)
 
 lemma dyn_hilbert_axiom_6: "\<Turnstile>[dyn_eval] (\<bbbA> v . (\<phi> \<Rrightarrow> \<psi>)) \<Rrightarrow> ( (\<bbbA> v . \<phi>) \<Rrightarrow> (\<bbbA> v . \<psi>) )"
-  apply simp
-  by blast
+  by (auto simp add: dyn_sem)
 
 lemma dyn_prop_axiom_rosser1: "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<phi> and \<phi>)"
   by simp
@@ -1155,7 +1249,7 @@ lemma dyn_hilbert_axiom_7:
   fixes \<phi> :: "('atom, 'var, 'prog) dyn_formula"
   assumes fv_assumption: "\<not> dyn_fv_sem \<phi> v"
   shows "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<bbbA> v . \<phi>"
-proof (simp, intro allI, intro impI)
+proof ((simp add: dyn_sem), intro allI, intro impI)
   fix \<mu>
   assume phi_satisfied: "dyn_eval \<phi> \<mu>"
   
@@ -1182,14 +1276,14 @@ lemma dyn_hilbert_axiom_conj_i:
     and \<psi> :: "('atom, 'var, 'prog) dyn_formula"
   shows "\<Turnstile>[dyn_eval]  \<phi> \<Rrightarrow> \<psi> \<Rrightarrow> (\<phi> and \<psi>)"
   unfolding theory_valid_def
-  by fastforce
+  by (auto simp add: dyn_sem)
 
 lemma dyn_hilbert_axiom_conj_e1:
   fixes \<phi> :: "('atom, 'var, 'prog) dyn_formula"
     and \<psi> :: "('atom, 'var, 'prog) dyn_formula"
   shows "\<Turnstile>[dyn_eval] (\<phi> and \<psi>) \<Rrightarrow> \<phi>"
   unfolding theory_valid_def
-  by fastforce
+  by (auto simp add: dyn_sem)
 
 
 lemma dyn_hilbert_axiom_conj_e2:
@@ -1197,9 +1291,22 @@ lemma dyn_hilbert_axiom_conj_e2:
     and \<psi> :: "('atom, 'var, 'prog) dyn_formula"
   shows "\<Turnstile>[dyn_eval] (\<phi> and \<psi>) \<Rrightarrow> \<psi>"
   unfolding theory_valid_def
-  by fastforce
+  by (auto simp add: dyn_sem)
 
-lemma dyn_hilbert_axiom_G:
+lemma dyn_axiom_P1:
+  "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<phi> and \<phi>)"
+  by (auto simp add: dyn_sem)
+
+
+lemma dyn_axiom_P2:
+  "\<Turnstile>[dyn_eval] (\<phi> and \<psi>) \<Rrightarrow> \<phi>"
+  by (auto simp add: dyn_sem)
+
+lemma dyn_axiom_P3:
+  "\<Turnstile>[dyn_eval] (\<phi> \<Rrightarrow> \<psi>) \<Rrightarrow> (\<rceil>(\<phi> and \<xi>) \<Rrightarrow> \<rceil>(\<xi> and \<phi>))"
+  by (auto simp add: dyn_sem)
+
+lemma dyn_axiom_A:
   fixes \<phi> :: "('atom, 'var, 'prog) dyn_formula"
     and v :: "'var"
   assumes "\<Turnstile>[dyn_eval] \<phi>"
@@ -1209,9 +1316,26 @@ lemma dyn_hilbert_axiom_G:
   unfolding dyn_eval.simps
   by simp
 
+lemma dyn_axiom_F1:
+  "\<Turnstile>[dyn_eval] (\<bbbA> v . (\<phi> \<Rrightarrow> \<psi>)) \<Rrightarrow> ( (\<bbbA> v . \<phi>) \<Rrightarrow> (\<bbbA> v . \<psi>) )"
+  using dyn_hilbert_axiom_6
+  by simp
+
+lemma dyn_axiom_F2:
+  assumes fv_assumption: "\<not> dyn_fv_sem \<phi> v"
+  shows "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<bbbA> v . \<phi>"
+  using dyn_hilbert_axiom_7 assms
+  by simp
+
+lemma dyn_axiom_F3:
+  shows "\<Turnstile>[dyn_eval] (\<bbbA> v . \<phi>) \<Rrightarrow> \<phi>"
+  apply (auto simp add: dyn_sem)
+  by (metis folCore.fol_equal_everywhere_but_def folCore_axioms
+      fol_states_agree_on_def)
+
 lemma dyn_hilbert_imp_transitive:
   "\<Turnstile>[dyn_eval] ((\<phi>1 \<Rrightarrow> \<phi>2) \<Rrightarrow> (\<phi>2 \<Rrightarrow> \<phi>3) \<Rrightarrow> (\<phi>1 \<Rrightarrow> \<phi>3))"
-  by simp
+  by (auto simp add: dyn_sem)
 
 subsection\<open>Dynamic Theory Axioms\<close>
 text\<open>
@@ -1235,9 +1359,7 @@ lemma dyn_axiom_K:
     and \<pi> :: "'prog"
   shows "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>(\<phi> \<Rrightarrow> \<psi>) \<Rrightarrow> ((\<lbrakk>\<pi>\<rbrakk>\<phi> \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>\<psi>))"
   unfolding theory_valid_def
-  apply simp
-  unfolding dyn_eval.simps
-  by blast
+  by (auto simp add: dyn_sem)
 
 end
 end

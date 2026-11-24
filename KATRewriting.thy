@@ -112,7 +112,8 @@ lemma kleene_strong_extensionality:
               full_prog_eval_def full_prog_eval_int.simps
               dyn_eval.simps fol_eval.simps
             using states_eq
-            by presburger
+            apply (simp add: dyn_sem)
+            using "0.prems"(1) by presburger
       next
         case (Suc n)
         assume start_end_eq: "\<forall>v. state_eval \<mu> v = state_eval \<omega> v \<and>
@@ -170,6 +171,7 @@ lemma kleene_strong_extensionality:
               full_prog_eval_def full_prog_eval_int.simps
               dyn_eval.simps fol_eval.simps
             using states_eq
+            apply (simp add: dyn_sem)
             by presburger
       next
         case (Suc n)
@@ -227,6 +229,7 @@ lemma rep_reordered:
           dyn_eval.simps fol_eval.simps
         apply simp
         using kleene_strong_extensionality
+        apply (simp add: dyn_sem)
         by (metis full_prog_eval_def)
   next
     case (Suc n)
@@ -271,7 +274,7 @@ theorem kat_rule3:
   shows "(\<alpha>\<squnion>(? (folnot FOLTRUE))) \<rightleftharpoons> \<alpha>"
   unfolding kat_dl.progEquiv_def kat_dl.progRefine_def
   unfolding full_prog_eval_def full_prog_eval_int.simps
-  by (simp add: FOLTRUE_def  OR_def dyn_eval.simps fol_eval.simps)
+  by (simp add: FOLTRUE_def  OR_def dyn_eval.simps fol_eval.simps dyn_sem)
 
 theorem kat_rule4:
   fixes \<alpha> \<beta> :: "('atom,'var,'prog) kat_prog"
@@ -292,7 +295,7 @@ theorem kat_rule6:
   shows "(? FOLTRUE ; \<alpha>) \<rightleftharpoons> \<alpha>"
   unfolding kat_dl.progEquiv_def kat_dl.progRefine_def
   unfolding full_prog_eval_def full_prog_eval_int.simps
-  apply (simp add: FOLTRUE_def dyn_eval.simps fol_eval.simps)
+  apply (simp add: FOLTRUE_def dyn_eval.simps fol_eval.simps dyn_sem)
   by (metis full_prog_var_determinance_n)
 
 theorem kat_rule7:
@@ -302,7 +305,7 @@ theorem kat_rule7:
   apply (simp add: full_prog_rewrite_seq full_prog_rewrite_choice)
   apply (subst (2 6) full_prog_eval_def)
   unfolding full_prog_eval_int.simps dyn_eval.simps fol_eval.simps
-  apply (simp)
+  apply (simp add: dyn_sem)
   apply (intro conjI, intro allI, intro impI)
   subgoal for \<sigma> \<mu>
   proof -
@@ -355,14 +358,14 @@ theorem kat_rule10:
   shows "(? (folnot FOLTRUE) ; \<alpha>) \<rightleftharpoons> (? (folnot FOLTRUE))"
   unfolding kat_dl.progEquiv_def kat_dl.progRefine_def
   unfolding full_prog_eval_def full_prog_eval_int.simps
-  by (simp add: FOLTRUE_def dyn_eval.simps fol_eval.simps)
+  by (simp add: FOLTRUE_def dyn_eval.simps fol_eval.simps dyn_sem)
 
 theorem kat_rule11:
   fixes \<alpha> :: "('atom,'var,'prog) kat_prog"
   shows "(\<alpha> ; ? (folnot FOLTRUE)) \<rightleftharpoons> (? (folnot FOLTRUE))"
   unfolding kat_dl.progEquiv_def kat_dl.progRefine_def
   unfolding full_prog_eval_def full_prog_eval_int.simps
-  by (simp add: FOLTRUE_def dyn_eval.simps fol_eval.simps)
+  by (simp add: FOLTRUE_def dyn_eval.simps fol_eval.simps dyn_sem)
 
 theorem kat_rule12:
   fixes \<alpha> :: "('atom,'var,'prog) kat_prog"
@@ -714,7 +717,7 @@ lemma check_helper_and:
 
 
 lemma check_helper_or:
-  "((? F1)\<squnion>(? F2)) \<rightleftharpoons> (? F1 or F2)"
+  "((? F1)\<squnion>(? F2)) \<rightleftharpoons> (? F1 folor F2)"
   unfolding kat_dl.progEquiv_def
   unfolding kat_dl.progRefine_def
   unfolding full_prog_eval_def
@@ -722,12 +725,12 @@ lemma check_helper_or:
   subgoal for \<sigma> \<mu>
     unfolding full_prog_eval_int.simps
     unfolding dyn_eval.simps fol_eval.simps
-    by fastforce
+    by (simp add: dyn_sem)
   apply (intro allI)
   subgoal for \<sigma> \<mu>
     unfolding full_prog_eval_int.simps
     unfolding dyn_eval.simps fol_eval.simps
-    by fastforce
+    by (simp add: dyn_sem)
   .
 
 
@@ -736,7 +739,7 @@ fun get_fml :: "('atom, 'var, 'prog) kat_prog \<Rightarrow> ('atom, 'var) fol_fo
     "get_fml (KATPROG _) = undefined"
   | "get_fml (CHECK x) = x"
   | "get_fml (SEQ x y) = (get_fml x) foland (get_fml y)"
-  | "get_fml (CHOICE x y) = (get_fml x) or (get_fml y)"
+  | "get_fml (CHOICE x y) = (get_fml x) folor (get_fml y)"
   | "get_fml (LOOP x) = (FOLTRUE)"
 
 fun is_purely_check :: "('atom, 'var, 'prog) kat_prog \<Rightarrow> bool"
@@ -790,7 +793,7 @@ next
   then show ?case
     unfolding is_purely_check.simps
     unfolding get_fml.simps
-    apply simp
+    apply (simp add: dyn_sem)
   proof -
     assume local_assm1: "P1 \<rightleftharpoons> (? get_fml P1)"
         and local_assm2: "P2 \<rightleftharpoons> (? get_fml P2)"
@@ -802,20 +805,20 @@ next
       using choice_helper2 [of P2 "(? get_fml P2)" "(? get_fml P1)"]
       using local_assm2
       by simp
-    also have "... \<rightleftharpoons> (? get_fml P1 or get_fml P2)"
+    also have "... \<rightleftharpoons> (? get_fml P1 folor get_fml P2)"
       using check_helper_or
       by simp
-    ultimately have "(P1\<squnion>P2) \<rightleftharpoons> (? get_fml P1 or get_fml P2)"
+    ultimately have "(P1\<squnion>P2) \<rightleftharpoons> (? get_fml P1 folor get_fml P2)"
       using kat_dl.progEquiv_transp_expl by blast
     then show "(P1\<squnion>P2) \<rightleftharpoons> (? folnot (folnot get_fml P1 foland folnot get_fml P2))"
-      by force
+      by (simp add: FirstOrder.OR_def)
   qed    
 next
   case (LOOP P)
   then show ?case
     unfolding is_purely_check.simps
     unfolding get_fml.simps
-    apply (simp del: FirstOrder.OR_def FOLTRUE_def)
+    apply (simp del: FirstOrder.OR_def FOLTRUE_def dyn_sem)
   proof -
     have fact: "\<And> n \<mu> \<omega> . full_prog_eval_int n (? get_fml P;((? get_fml P)* )) \<mu> \<omega> \<Longrightarrow> state_eval \<mu> = state_eval \<omega>"
       unfolding full_prog_eval_int.simps(2,3)
@@ -1010,17 +1013,17 @@ proof -
     using check_helper_and[of y z]
     using choice_helper2
     by blast
-  also have "... \<rightleftharpoons> (? (x or ( y foland  z)))"
+  also have "... \<rightleftharpoons> (? (x folor ( y foland  z)))"
     using check_helper_or
     by blast
-  also have "... \<rightleftharpoons> (? ( (x or y) foland  (x or z)))"
+  also have "... \<rightleftharpoons> (? ( (x folor y) foland  (x folor z)))"
     using bool_or_distrib[of x y z]
     unfolding kat_dl.progEquiv_def kat_dl.progRefine_def
     unfolding full_prog_eval_def
     unfolding full_prog_eval_int.simps
     unfolding dyn_eval.simps
     by simp
-  also have "... \<rightleftharpoons> (? ( (x or y)) ; (?  (x or z)))"
+  also have "... \<rightleftharpoons> (? ( (x folor y)) ; (?  (x folor z)))"
     using check_helper_and
     using kat_dl.progEquiv_symp_expl by blast
   also have "... \<rightleftharpoons> (((? x) \<squnion> (? y)) ; ((? x) \<squnion>  (? z)))"
@@ -1120,7 +1123,7 @@ lemma bool_rule9: "((? x) \<squnion> ?(FOLTRUE)) \<rightleftharpoons> (? FOLTRUE
   unfolding full_prog_eval_def
   unfolding full_prog_eval_int.simps
   unfolding dyn_eval.simps
-  by simp
+  by (simp add: dyn_sem)
 
 theorem bool_rule9_general:
   assumes "is_purely_check x"
@@ -1144,7 +1147,7 @@ lemma bool_rule10: "((? x) ; ?(folnot FOLTRUE)) \<rightleftharpoons> (? (folnot 
   unfolding full_prog_eval_def
   unfolding full_prog_eval_int.simps
   unfolding dyn_eval.simps
-  by simp
+  by (simp add: dyn_sem)
 
 theorem bool_rule10_general:
   assumes "is_purely_check x"
@@ -1176,7 +1179,7 @@ proof -
     unfolding COMPLEMENT.simps
     using kat_dl.progEquivSimplification by blast
 
-  also have "... \<rightleftharpoons> (? ((get_fml x) or (folnot (get_fml x))))"
+  also have "... \<rightleftharpoons> (? ((get_fml x) folor (folnot (get_fml x))))"
     using check_helper_or
     by force
 
@@ -1187,7 +1190,7 @@ proof -
     unfolding full_prog_eval_int.simps
     unfolding dyn_eval.simps
     unfolding FirstOrder.OR_def fol_eval.simps
-    by simp
+    by (simp add: dyn_sem)
   finally show ?thesis
     by blast
 qed
@@ -1216,7 +1219,7 @@ proof -
     unfolding full_prog_eval_int.simps
     unfolding dyn_eval.simps
     unfolding FirstOrder.OR_def fol_eval.simps
-    by simp
+    by (simp add: dyn_sem)
   finally show ?thesis
     by blast
 qed

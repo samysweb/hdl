@@ -196,7 +196,7 @@ proof -
 
   show ?thesis
     using dir1 dir2
-    by simp
+    by (auto simp add: dyn_sem)
 qed
 
 text\<open>

@@ -903,7 +903,7 @@ proof -
 
   show ?thesis
     using dir1 dir2
-    by simp
+    by (auto simp add: dyn_sem)
 qed
 
 lemma dyn_axiom_seq:
@@ -933,7 +933,7 @@ proof -
 
   show ?thesis
     using dir1 dir2
-    by simp
+    by (auto simp add: dyn_sem)
 qed
 
 lemma dyn_axiom_choice:
@@ -963,7 +963,7 @@ proof -
 
   show ?thesis
     using dir1 dir2
-    by simp
+    by (auto simp add: dyn_sem)
 qed
 
 lemma dyn_axiom_star:
@@ -1130,7 +1130,7 @@ proof -
 
   show ?thesis
     using dir1 dir2
-    by simp
+    by (auto simp add: dyn_sem)
 qed
 
 
