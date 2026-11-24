@@ -1,8 +1,8 @@
-subsection\<open>Dynamic Theories with Bounded Variables\<close>
+subsubsection\<open>Dynamic Theories with Finite Support\<close>
 
 text\<open>
 This theory formalizes dynamic theories
-with a syntactic computation of bounded variables.
+with a finite syntactic computation of bounded variables.
 
 This allows us to discharge mentions of  \texttt{dyn\_prog\_bv\_sem}
 via syntactic means for the concrete dynamic theory.
@@ -24,6 +24,7 @@ locale dynamic_theory_bv =
   +
   fixes dyn_prog_BV :: "'prog \<Rightarrow> 'var \<Rightarrow> bool"
   assumes dyn_prog_BV_overapprox: "dyn_prog_bv_sem \<pi> v \<Longrightarrow> dyn_prog_BV \<pi> v"
+      and prog_bv_finite: "finite (Collect (dyn_prog_BV \<pi>))"
 begin
 
 lemma dyn_prog_BV_subset:

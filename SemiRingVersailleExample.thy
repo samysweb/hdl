@@ -27,6 +27,7 @@ theory SemiRingVersailleExample
     Main
     "DynamicLogicProof"
     "SemiRingDL"
+    "DynamicLogicVersaille"
     "DynamicLogicVersailleSyntactic"
 begin
 
@@ -68,11 +69,19 @@ interpretation sr:
     "state_id :: (exvar \<Rightarrow> exval) \<Rightarrow> exvar \<Rightarrow> exval"
     semiring_prog_eval semiring_prog_fv semiring_eq semiring_prog_bv
 proof (unfold_locales)
-  show "\<And>\<pi> v. semiring_dl.dyn_prog_bv_sem \<pi> v \<Longrightarrow> semiring_prog_bv \<pi> v"
+  fix \<pi>
+  show "\<And>v. semiring_dl.dyn_prog_bv_sem \<pi> v \<Longrightarrow> semiring_prog_bv \<pi> v"
     by (smt (verit) semiring_dl.dyn_prog_bv_sem.elims(2)
         semiring_folCore.fol_equal_everywhere_but_def
         semiring_folCore.fol_states_agree_on_def semiring_prog_bv.elims(3)
         semiring_prog_eval.simps)
+  show "finite (Collect (semiring_prog_bv \<pi>))"
+  proof (induct \<pi>)
+    case (ASSIGN x1a x2a)
+    then show ?case
+      unfolding semiring_prog_bv.simps
+      by auto
+  qed
 qed
 
 subsubsection\<open>All variables are twins\<close>
@@ -98,8 +107,8 @@ lemma sr_fresh_twins:
   assumes "distinct us"
       and "length ws = length us"
       and "disjnt A (set us)"
-    shows "sr.fresh_twins ws A us"
-  unfolding sr.fresh_twins_def
+    shows "sr.kat_dl_eq.fresh_twins ws A us"
+  unfolding sr.kat_dl_eq.fresh_twins_def
   using assms sr_twin_var
   by (simp add: list_all2_iff)
 
@@ -370,7 +379,7 @@ lemma ex_read_ws_disjnt: "disjnt ExRead (set [VEL])"
 lemma ex_ws_dist: "distinct [VEL]"
   by simp
 
-lemma ex_fresh_twins: "sr.fresh_twins [VEL] ExA [VELP]"
+lemma ex_fresh_twins: "sr.kat_dl_eq.fresh_twins [VEL] ExA [VELP]"
   by (rule sr_fresh_twins) (auto simp add: disjnt_def)
 
 subsubsection\<open>Putting it together\<close>
@@ -402,7 +411,7 @@ theorem example_safe:
       by simp
     show "Collect (sr.kat_dl.dyn_FV Monitor) \<subseteq> ExRead \<union> set [VELP]"
       using ex_fv_monitor by fastforce
-    show "sr.fresh_twins [VEL] ExA [VELP]"
+    show "sr.kat_dl_eq.fresh_twins [VEL] ExA [VELP]"
       using ex_fresh_twins by blast
     show "Collect (sr.kat_BV Impl) \<inter> ExA \<subseteq> set [VEL]"
       using ex_impl_bound by blast

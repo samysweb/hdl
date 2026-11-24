@@ -1,16 +1,6 @@
-section\<open>Instantiations\<close>
-text\<open>
-We now demonstrate the utility of our theory, by providing concrete instantiations.
-In addition to the two instantiations presented here,
-we also have an instantiation for the AFP formalization of
-differential dynamic logic~\cite{Differential_Dynamic_Logic-AFP}.
-For sake of modularity of this Isabelle session,
-we extracted this instantiation to its own session.
-\<close>
 subsection\<open>Propositional Dynamic Logic\<close>
 text\<open>
 \label{subsec:inst:pdl}
-TODO: Update
 \<close>
 theory PDL
   imports

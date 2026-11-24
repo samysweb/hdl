@@ -1,4 +1,4 @@
-subsubsection\<open>Neural Dynamic Theory\<close>
+subsection\<open>Neural Dynamic Theory\<close>
 text\<open>
 Implementation formalized by Claude Opus after
 intensive discussion with Samuel Teuber on 19th of August 2026.

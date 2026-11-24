@@ -1,3 +1,5 @@
+subsection\<open>Auxiliary Proof Primitives\<close>
+
 theory DynamicLogicProof
   imports
     Main
@@ -11,7 +13,7 @@ begin
 named_theorems dt_prop_unfold
   "propositional layer for dt_prop — do not add the BOX or \<forall>-equations here"
 
-subsection\<open>Propositional skeleton\<close>
+subsubsection\<open>Propositional skeleton\<close>
 
 lemma dt_propI: "(\<And>\<mu>. dyn_eval \<chi> \<mu>) \<Longrightarrow> \<Turnstile>[dyn_eval] \<chi>"
   by (simp add: theory_valid_def)
@@ -26,10 +28,7 @@ lemma dt_prop_localize:
   "\<Turnstile>[dyn_eval] \<phi> \<Longrightarrow> (dyn_eval \<phi> \<mu> \<Longrightarrow> dyn_eval \<chi> \<mu>) \<Longrightarrow> dyn_eval \<chi> \<mu>"
   by (simp add: theory_valid_def)
 
-text\<open>
-Homomorphism equations.
-Stated as named lemmas so that reordering the datatype
-cannot silently change the bundle.\<close>
+text\<open>Homomorphism over propositional HDL formulas\<close>
 
 lemma dt_ev_and  [dt_prop_unfold]: "dyn_eval (\<phi> and \<psi>) \<mu> \<longleftrightarrow> (dyn_eval \<phi> \<mu> \<and> dyn_eval \<psi> \<mu>)" by simp
 lemma dt_ev_not  [dt_prop_unfold]: "dyn_eval (\<rceil>\<phi>) \<mu> \<longleftrightarrow> (\<not> dyn_eval \<phi> \<mu>)" by simp
@@ -37,7 +36,7 @@ lemma dt_ev_fol  [dt_prop_unfold]: "dyn_eval (FOL \<phi>) \<mu> \<longleftrighta
 lemma dt_fev_and [dt_prop_unfold]: "fol_eval (\<phi> foland \<psi>) \<mu> \<longleftrightarrow> (fol_eval \<phi> \<mu> \<and> fol_eval \<psi> \<mu>)" by simp
 lemma dt_fev_not [dt_prop_unfold]: "fol_eval (folnot \<phi>) \<mu> \<longleftrightarrow> (\<not> fol_eval \<phi> \<mu>)" by simp
 
-text\<open>Sugar. These rewrite inside boxes too, which normalises atoms — desirable.\<close>
+text\<open>Rewriting for propositional simplification\<close>
 
 declare IMP_def [dt_prop_unfold] OR_def [dt_prop_unfold]
         EQUIV_def [dt_prop_unfold] DIAMOND_def [dt_prop_unfold]
@@ -45,7 +44,8 @@ declare IMP_def [dt_prop_unfold] OR_def [dt_prop_unfold]
         EX_VEC_def [dt_prop_unfold]
         FirstOrder.IMP_def [dt_prop_unfold] FirstOrder.OR_def [dt_prop_unfold]
         FirstOrder.EQUIV_def [dt_prop_unfold] FOLTRUE_def [dt_prop_unfold]
-        
+
+text\<open>dt\_prop allows solving propositionally valid formulas via a sat solver\<close>
 
 method dt_prop_setup uses facts declares dt_prop_unfold =
   (-,
@@ -61,6 +61,7 @@ method dt_prop uses facts declares dt_prop_unfold =
 method dt_prop_debug uses facts declares dt_prop_unfold =
   (dt_prop_setup facts: facts)
 
+paragraph\<open>Additional propositionally valid formulas\<close>
 
 lemma dt_prop_id:
   "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<phi>"
@@ -86,19 +87,7 @@ lemma dt_prop_uncurry:
   "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> (\<psi> \<Rrightarrow> \<chi>) \<Longrightarrow> \<Turnstile>[dyn_eval] (\<phi> and \<psi>) \<Rrightarrow> \<chi>"
   by dt_prop
 
-
-
-lemma dt_box_diamond_iff:
-  assumes total_det: "\<And>\<mu>. \<exists>!\<omega>. prog_eval \<pi> \<mu> \<omega>"
-  shows "\<Turnstile>[dyn_eval] ((\<langle>\<pi>\<rangle> \<phi>) \<Lleftarrow>\<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk> \<phi>))"
-  apply (rule dt_prop_equivI)
-  unfolding theory_valid_def IMP_def
-  unfolding dyn_eval.simps(1,2,3)
-  using assms
-  using box_diamond_iff
-  by auto
-
-
+subsubsection\<open>First-Order Proof Rules\<close>
 
 lemma dt_fol_M:
   assumes "\<Turnstile>[dyn_eval] \<phi> \<Rrightarrow> \<psi>"
@@ -303,6 +292,19 @@ next
     by simp
 qed
 
+
+subsubsection\<open>Proof Rules for Modal Formulas\<close>
+
+lemma dt_box_diamond_iff:
+  assumes total_det: "\<And>\<mu>. \<exists>!\<omega>. prog_eval \<pi> \<mu> \<omega>"
+  shows "\<Turnstile>[dyn_eval] ((\<langle>\<pi>\<rangle> \<phi>) \<Lleftarrow>\<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk> \<phi>))"
+  apply (rule dt_prop_equivI)
+  unfolding theory_valid_def IMP_def
+  unfolding dyn_eval.simps(1,2,3)
+  using assms
+  using box_diamond_iff
+  by auto
+
 lemma dt_box_K [intro]:
   "\<Turnstile>[dyn_eval] \<lbrakk>\<pi>\<rbrakk>(\<phi> \<Rrightarrow> \<psi>) \<Longrightarrow> \<Turnstile>[dyn_eval] ((\<lbrakk>\<pi>\<rbrakk>\<phi> \<Rrightarrow> \<lbrakk>\<pi>\<rbrakk>\<psi>))"
   using dyn_axiom_K[of \<pi> \<phi> \<psi>]
@@ -487,11 +489,8 @@ end
 context dynamic_theory_eq
 begin
 
-lemma test:
-  assumes "A \<Longrightarrow> (B \<Longrightarrow> C)"
-    shows "A \<and> B \<Longrightarrow> C"
-  using assms by blast
 
+subsubsection\<open>Proof Rules for Equality\<close>
 
 lemma eq_all_axiom_and:
   fixes v :: "'var"

@@ -1,3 +1,10 @@
+section\<open>Reasoning about Neural Networks\<close>
+text\<open>
+Implementation formalized by Claude Opus after
+intensive discussion with Samuel Teuber on 19th of August 2026.
+Cross-checked by Samuel Teuber.
+\<close>
+
 subsection\<open>Combining Program Signatures\<close>
 text\<open>
 Implementation formalized by Claude Opus after

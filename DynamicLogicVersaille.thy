@@ -1,3 +1,8 @@
+section\<open>Proof Principles of VerSAILLE\<close>
+text\<open>
+We first prove a version of VerSAILLE's proof principles w.r.t. semantic variable sets.
+Subsequently, we derive a syntactic version for DLs with finite support.
+\<close>
 theory DynamicLogicVersaille
   imports
     Main
@@ -380,7 +385,7 @@ locale dynamic_theory_versaille =
     and eqPred :: "'var \<Rightarrow> 'var \<Rightarrow> ('atom, 'var) fol_formula"
 begin 
 
-interpretation kat_dl_eq:
+sublocale kat_dl_eq:
   dynamic_theory_eq "atom_eval" "atom_fv_syn" "state_eval" "full_prog_eval" "full_prog_fv_syn"
   by (smt (verit, best) dynamic_theory.dt_ev_fol dynamic_theory_eq_axioms
       dynamic_theory_eq_axioms_def dynamic_theory_eq_def

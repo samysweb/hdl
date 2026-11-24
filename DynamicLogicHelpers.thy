@@ -5,9 +5,7 @@ theory DynamicLogicHelpers
 begin
 
 
-text\<open>
-Results that are sometimes useful for (first-order) reasoning.
-\<close>
+subsubsection\<open>Auxiliary Proof Rules\<close>
 
 context dynamic_theory
 begin

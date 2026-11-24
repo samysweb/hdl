@@ -1,4 +1,4 @@
-section\<open>Extensional Dynamic Theories\<close>
+subsubsection\<open>Extensional Dynamic Theories\<close>
 text\<open>
 \label{sec:extensional-dl}
 For completeness, we prove here that the stronger form of extensionality

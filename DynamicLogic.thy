@@ -266,6 +266,10 @@ qed
 
 end
 
+subsection\<open>Variants of Dynamic Theories\<close>
+
+subsubsection\<open>Dynamic Theories with Equality\<close>
+
 locale dynamic_theory_eq =
     dynamic_theory atom_eval atom_fv_syn state_eval prog_eval dyn_prog_FV
     for atom_eval :: "'atom \<Rightarrow> 'state \<Rightarrow> bool"
