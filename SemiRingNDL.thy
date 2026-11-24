@@ -1,4 +1,4 @@
-subsubsection\<open>Neural Dynamic Theory\<close>
+subsection\<open>Neural Dynamic Theory\<close>
 text\<open>
 Implementation formalized by Claude Opus after
 intensive discussion with Samuel Teuber on 19th of August 2026.
@@ -159,7 +159,7 @@ definition wf_nstate :: "(ndl_var \<Rightarrow> real tensor) \<Rightarrow> bool"
 lemma wf_nstate_zero: "wf_nstate (\<lambda>v. tensor_from_lookup (var_shape v) (\<lambda>i. 0))"
   by (simp add: wf_nstate_def dims_tensor_from_lookup)
 
-typedef ndl_state = "{\<mu>. wf_nstate \<mu>}"
+typedef ndl_state = "{\<mu> :: (ndl_var \<Rightarrow> real tensor) . wf_nstate \<mu>}"
   using wf_nstate_zero by blast
 
 definition nst :: "ndl_state \<Rightarrow> ndl_var \<Rightarrow> real tensor"
@@ -413,6 +413,136 @@ interpretation ndl_dl:
     "semiringfol_ProgramEval_flex ndl_eval" semiring_prog_fv
     nn_eval nn_fv
   by (simp add: dynamic_theory_sum_def ndl_assign_dyn ndl_nn_dyn)
+
+print_interps FirstOrder.folCore
+
+lemma ndl_box_diamond_iff:
+  "\<Turnstile>[ndl_dl.sum_dl.dyn_eval] ((\<langle>\<pi>\<rangle> \<phi>) \<Lleftarrow>\<Rrightarrow> (\<lbrakk>\<pi>\<rbrakk> \<phi>))"
+proof -
+  have "\<And>\<mu>. \<exists>!\<omega>. ndl_dl.sum_prog_eval \<pi> \<mu> \<omega>"
+  proof (induct \<pi>)
+    case (Inl a)
+    then show "\<And>\<mu>. Ex1 (ndl_dl.sum_prog_eval (Inl a) \<mu>)"
+    proof (cases a)
+      case (ASSIGN x1 x2)
+      also have "\<And>\<mu>. \<exists>!\<omega>. ndl_dl.sum_prog_eval (Inl (ASSIGN x1 x2)) \<mu> \<omega>"
+      proof -
+        fix \<mu>
+        obtain var shape pos where var_cond1: "x1 = (Abs_ndl_var_lookup (VarLookup (NVar var shape) pos))"
+                               and var_cond2: "pos \<lhd> shape"
+          by (metis lk_valid mk_lookup_def mk_lookup_lk ndl_var.collapse)
+        then have var_cond3: "pos \<lhd> var_shape (NVar var shape)"
+          unfolding var_shape_def
+          by simp
+        let ?targetvar = "(NVar var shape)"
+        let ?map = "
+            \<lambda> (\<nu> :: ndl_state) .
+            \<lambda> (v :: ndl_var) .
+              if (v=?targetvar)
+              then
+                (tensor_from_lookup shape (\<lambda> i.
+                  if (i=pos) then (semiringfol_TermEval x2 (ndl_eval \<nu>)) else (lookup ((nst \<nu>) v) i)))
+              else
+                ((nst \<nu>) v)"
+        have mapped_wf: "wf_nstate (?map \<mu>)"
+          unfolding wf_nstate_def
+          apply simp
+          using dims_tensor_from_lookup by blast
+        let ?fullmap = "Abs_ndl_state \<circ> ?map"
+        show "\<exists>!\<omega>. ndl_dl.sum_prog_eval (Inl (x1:=x2)) \<mu> \<omega>"
+          unfolding Ex1_def
+          apply (rule exI[of _ "?fullmap \<mu>"])
+          unfolding ndl_dl.sum_prog_eval_def
+          unfolding semiringfol_ProgramEval_flex.simps
+          apply (simp del: semiring_prog_eval.simps)
+          unfolding semiring_prog_eval.simps
+          apply (intro conjI)
+          using var_cond1 var_cond2 mapped_wf
+          subgoal
+            unfolding ndl_eval_def
+            unfolding id_def
+            unfolding folCore.fol_equal_everywhere_but_def[OF semiring_folCore.folCore_axioms]
+            unfolding folCore.fol_states_agree_on_def[OF semiring_folCore.folCore_axioms]
+            unfolding state_id_def
+            apply simp
+            by (smt (verit) lk_valid lookup_tensor_from_lookup mk_lookup_def mk_lookup_lk
+                ndl_var.sel(2))
+          subgoal
+            unfolding nst_def
+            unfolding ndl_eval_def
+            using var_cond1 var_cond2 mapped_wf
+            by (smt (verit, ccfv_threshold) dims_tensor_from_lookup
+                length_tensor_vec_from_lookup lookup_def mk_lookup_def mk_lookup_sel(1,2)
+                nst_Abs nst_def tensor_from_lookup_def tensor_lookup_base tensor_lookup_cong
+                vec_tensor wf_nstate_def)
+          apply (intro allI)
+          proof
+            fix y
+            have aux_fact: "Rep_ndl_state
+                   (Abs_ndl_state
+                     (?map \<mu>)) = ?map \<mu>"
+              using mapped_wf Abs_ndl_state_inverse
+              by blast
+            assume assm1: "semiring_folCore.fol_equal_everywhere_but x1 (ndl_eval \<mu>) (ndl_eval y) \<and>
+         ndl_eval y x1 = semiringfol_TermEval x2 (ndl_eval \<mu>)"
+
+            have "y =
+               (Abs_ndl_state (?map \<mu>))"
+            proof (rule ndl_state_eqI)
+              fix x
+              show "ndl_eval y x = ndl_eval (Abs_ndl_state (?map \<mu>)) x"
+              proof (cases "x = x1")
+                case True
+                then show ?thesis
+                  using assm1
+                  unfolding ndl_eval_def nst_Abs[OF mapped_wf]
+                  unfolding True
+                  unfolding var_cond1
+                  unfolding mk_lookup_def[symmetric]
+                  unfolding mk_lookup_sel[OF var_cond3]
+                  by (simp add: lookup_tensor_from_lookup var_cond2)
+              next
+                case False
+                then show ?thesis
+                  using assm1
+                  unfolding ndl_eval_def nst_Abs[OF mapped_wf]
+                  unfolding var_cond1
+                  unfolding mk_lookup_def[symmetric]
+                  unfolding mk_lookup_sel[OF var_cond3]
+                  unfolding folCore.fol_equal_everywhere_but_def[OF semiring_folCore.folCore_axioms]
+                  unfolding folCore.fol_states_agree_on_def[OF semiring_folCore.folCore_axioms]
+                  unfolding state_id_def id_def
+                  apply simp
+                  by (smt (verit, best) lk_valid lookup_tensor_from_lookup ndl_var.sel(2))
+              qed
+            qed
+
+            thus "y =
+                   (Abs_ndl_state
+          (\<lambda>v. if v = NVar var shape
+         then tensor_from_lookup shape
+               (\<lambda>i. if i = pos then semiringfol_TermEval x2 (ndl_eval \<mu>)
+                     else lookup (nst \<mu> v) i)
+         else nst \<mu> v))"
+              using Rep_ndl_state_inject by auto
+          qed
+        qed
+      finally show "\<And>\<mu> . Ex1 (ndl_dl.sum_prog_eval (Inl a) \<mu>) "
+        by fastforce
+    qed
+  next
+    case (Inr b)
+    then show "\<And>\<mu>. Ex1 (ndl_dl.sum_prog_eval (Inr b) \<mu>)"
+    proof (cases b)
+      case (Abs_ndl_nn_prog y)
+      then show "\<And>\<mu> . Ex1 (ndl_dl.sum_prog_eval (Inr b) \<mu>) "
+        by (simp add: nn_total_det)
+    qed
+  qed
+  thus ?thesis
+    using ndl_dl.sum_dl.dt_box_diamond_iff
+    by simp
+qed
 
 abbreviation NNPROG :: "ndl_nn_prog \<Rightarrow>
     ((ndl_var_lookup, real) semiring_prog + ndl_nn_prog)"
