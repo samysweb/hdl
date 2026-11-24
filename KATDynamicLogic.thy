@@ -235,14 +235,6 @@ fun full_prog_fv_syn :: "('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Righta
   | "full_prog_fv_syn (CHOICE \<pi>1 \<pi>2) v = ((full_prog_fv_syn \<pi>1 v) \<or> (full_prog_fv_syn \<pi>2 v))"
   | "full_prog_fv_syn (LOOP \<pi>) v = (full_prog_fv_syn \<pi> v)"
 
-fun full_dyn_FV_fml :: "('atom,'var,('atom, 'var, 'prog) kat_prog) dyn_formula \<Rightarrow> 'var \<Rightarrow> bool"
-  where
-    "full_dyn_FV_fml (FOL \<phi>) v = dyn_FV (FOL \<phi>) v"
-  | "full_dyn_FV_fml (AND \<phi> \<psi>) v = ((full_dyn_FV_fml \<phi> v) \<or> (full_dyn_FV_fml \<psi> v))"
-  | "full_dyn_FV_fml (NOT \<phi>) v = (full_dyn_FV_fml \<phi> v)"
-  | "full_dyn_FV_fml (FOL_ALL v \<phi>) w = (if (v=w) then False else (full_dyn_FV_fml \<phi> v))"
-  | "full_dyn_FV_fml (BOX \<pi> \<phi>) v = ((full_prog_fv_syn \<pi> v) \<or> (full_dyn_FV_fml \<phi> v))"
-
 fun full_dyn_prog_BV :: " ('prog \<Rightarrow> 'var \<Rightarrow> bool) \<Rightarrow>('atom,'var,'prog) kat_prog \<Rightarrow> 'var \<Rightarrow> bool"
   where
     "full_dyn_prog_BV BV (KATPROG \<pi>) v = BV \<pi> v"

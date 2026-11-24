@@ -78,6 +78,10 @@ begin
       "FOR_ALL_VEC [] \<phi> = \<phi>"
     | "FOR_ALL_VEC (x # xs) \<phi> = \<bbbA> x . (FOR_ALL_VEC xs \<phi>)"
 
+  definition EX_VEC :: "'var list \<Rightarrow> ('atom,'var,'prog) dyn_formula \<Rightarrow> ('atom,'var,'prog) dyn_formula"
+  ("\<bbbE>\<bbbE> _ . _" 190)
+  where "\<bbbE>\<bbbE> vs . \<phi> \<equiv> \<rceil>(\<bbbA>\<bbbA> vs . \<rceil>\<phi>)"
+
   definition DYNTRUE :: "('atom,'var,'prog) dyn_formula"
     where[dyn_sem]: "DYNTRUE = (FOL FOLTRUE)"
 
@@ -121,6 +125,11 @@ begin
     unfolding theory_valid_def
     unfolding dyn_eval.simps
     by (auto simp add: dyn_sem)
+
+  lemma ex_vec_single: "dyn_eval (\<bbbE>\<bbbE> (x # xs) . \<phi>) \<mu>
+                       = (\<exists>\<nu>. fol_equal_everywhere_but x \<mu> \<nu> \<and> dyn_eval (\<bbbE>\<bbbE> xs . \<phi>) \<nu>)"
+    unfolding EX_VEC_def FOR_ALL_VEC.simps(2)
+    by auto
 
   subsection\<open>Free and Bound Variables\<close>
 
@@ -322,6 +331,182 @@ begin
         by blast
     qed
   qed
+
+  text\<open>
+  Decomposition of the semantic free variables of a quantifier.
+  Note that only \<open>\<subseteq>\<close> holds, not equality: quantification can remove a
+  dependence altogether (\<open>\<bbbA> x . (v = x)\<close> is unsatisfiable and hence has no
+  free variables at all, although \<open>v\<close> is free in the body).
+  \<close>
+  
+  lemma dyn_fv_sem_all_elim:
+    assumes "dyn_fv_sem (\<bbbA> x . \<phi>) v"
+    shows "v \<noteq> x \<and> dyn_fv_sem \<phi> v"
+    using assms dyn_fv_sem_all_not_free dyn_fv_sem_all_intro
+    by blast
+  
+  lemma dyn_fv_sem_all_subset:
+    "Collect (dyn_fv_sem (\<bbbA> x . \<phi>)) \<subseteq> Collect (dyn_fv_sem \<phi>) - {x}"
+    using dyn_fv_sem_all_elim
+    by blast
+  
+  lemma dyn_fv_sem_all_vec_subset:
+    "Collect (dyn_fv_sem (\<bbbA>\<bbbA> vs . \<phi>)) \<subseteq> Collect (dyn_fv_sem \<phi>) - set vs"
+  proof (induct vs)
+    case Nil
+    then show ?case
+      unfolding FOR_ALL_VEC.simps(1)
+      by simp
+  next
+    case (Cons a vs)
+    have "Collect (dyn_fv_sem (\<bbbA>\<bbbA> (a # vs) . \<phi>))
+            \<subseteq> Collect (dyn_fv_sem (\<bbbA>\<bbbA> vs . \<phi>)) - {a}"
+      unfolding FOR_ALL_VEC.simps(2)
+      by (rule dyn_fv_sem_all_subset)
+    also have "... \<subseteq> (Collect (dyn_fv_sem \<phi>) - set vs) - {a}"
+      using Cons.hyps by blast
+    finally show ?case
+      by (metis Diff_insert list.simps(15))
+  qed
+  
+  lemma dyn_fv_sem_all_vec_mono:
+    "Collect (dyn_fv_sem (\<bbbA>\<bbbA> vs . \<phi>)) \<subseteq> Collect (dyn_fv_sem \<phi>)"
+    using dyn_fv_sem_all_vec_subset by blast
+
+  lemma dyn_fv_sem_all_vec_disjoint:
+    "Collect (dyn_fv_sem (\<bbbA>\<bbbA> vs . \<phi>)) \<inter> set vs = {}"
+    using dyn_fv_sem_all_vec_subset by blast
+
+  lemma dyn_fv_sem_not_eq:
+  "dyn_fv_sem (\<rceil> \<phi>) v = dyn_fv_sem \<phi> v"
+  by auto
+
+  lemma dyn_fv_sem_and_elim:
+    assumes "dyn_fv_sem (\<phi> and \<psi>) v"
+    shows "dyn_fv_sem \<phi> v \<or> dyn_fv_sem \<psi> v"
+  proof (rule ccontr)
+    assume nofree: "\<not> (dyn_fv_sem \<phi> v \<or> dyn_fv_sem \<psi> v)"
+    obtain \<mu> \<omega> where
+          eq: "fol_equal_everywhere_but v \<mu> \<omega>"
+      and diff: "dyn_eval (\<phi> and \<psi>) \<mu> \<noteq> dyn_eval (\<phi> and \<psi>) \<omega>"
+      using assms[unfolded dyn_fv_sem.simps] by blast
+    have "dyn_eval \<phi> \<mu> = dyn_eval \<phi> \<omega>"
+     and "dyn_eval \<psi> \<mu> = dyn_eval \<psi> \<omega>"
+      using nofree eq by auto
+    then show False
+      using diff by simp
+  qed
+  
+  lemma dyn_fv_sem_imp_elim:
+    assumes "dyn_fv_sem (\<phi> \<Rrightarrow> \<psi>) v"
+    shows "dyn_fv_sem \<phi> v \<or> dyn_fv_sem \<psi> v"
+    using assms
+    unfolding IMP_def
+    using dyn_fv_sem_and_elim dyn_fv_sem_not_eq
+    by blast
+  
+  lemma dyn_fv_sem_or_elim:
+    assumes "dyn_fv_sem (\<phi> or \<psi>) v"
+    shows "dyn_fv_sem \<phi> v \<or> dyn_fv_sem \<psi> v"
+    using assms
+    unfolding OR_def
+    using dyn_fv_sem_and_elim dyn_fv_sem_not_eq
+    by blast
+  
+  lemma dyn_fv_sem_equiv_elim:
+    assumes "dyn_fv_sem (\<phi> \<Lleftarrow>\<Rrightarrow> \<psi>) v"
+    shows "dyn_fv_sem \<phi> v \<or> dyn_fv_sem \<psi> v"
+    using assms
+    unfolding EQUIV_def
+    using dyn_fv_sem_and_elim dyn_fv_sem_imp_elim
+    by blast
+  
+  text\<open>Set-level forms.\<close>
+  
+  lemma dyn_fv_sem_and_subset:
+    "Collect (dyn_fv_sem (\<phi> and \<psi>)) \<subseteq> Collect (dyn_fv_sem \<phi>) \<union> Collect (dyn_fv_sem \<psi>)"
+    using dyn_fv_sem_and_elim by blast
+  
+  lemma dyn_fv_sem_imp_subset:
+    "Collect (dyn_fv_sem (\<phi> \<Rrightarrow> \<psi>)) \<subseteq> Collect (dyn_fv_sem \<phi>) \<union> Collect (dyn_fv_sem \<psi>)"
+    using dyn_fv_sem_imp_elim by blast
+  
+  lemma dyn_fv_sem_not_subset:
+    "Collect (dyn_fv_sem (\<rceil> \<phi>)) \<subseteq> Collect (dyn_fv_sem \<phi>)"
+    using dyn_fv_sem_not_eq by blast
+
+  lemma dyn_fv_sem_cong:
+    assumes "\<And>\<mu>. dyn_eval \<phi> \<mu> = dyn_eval \<psi> \<mu>"
+    shows "dyn_fv_sem \<phi> v = dyn_fv_sem \<psi> v"
+    unfolding dyn_fv_sem.simps
+    by (simp only: assms)
+  
+  lemma dyn_fv_sem_valid:
+    assumes "\<Turnstile>[dyn_eval] \<phi>"
+    shows "\<not> dyn_fv_sem \<phi> v"
+    using assms
+    unfolding dyn_fv_sem.simps
+    by (simp add: theory_valid_def)
+
+  lemma dyn_fv_sem_box_elim:
+  assumes "dyn_fv_sem (\<lbrakk>\<pi>\<rbrakk> \<phi>) v"
+  shows "dyn_prog_fv_sem \<pi> v \<or> dyn_fv_sem \<phi> v"
+  proof (rule ccontr)
+    assume nofree: "\<not> (dyn_prog_fv_sem \<pi> v \<or> dyn_fv_sem \<phi> v)"
+    then have nprog: "\<not> dyn_prog_fv_sem \<pi> v"
+          and nfml: "\<not> dyn_fv_sem \<phi> v"
+      by auto
+  
+    have sym: "\<And>\<mu> \<omega>. fol_equal_everywhere_but v \<mu> \<omega> \<Longrightarrow> fol_equal_everywhere_but v \<omega> \<mu>"
+      unfolding fol_equal_everywhere_but_def fol_states_agree_on_def
+      by auto
+  
+    have transfer: "\<And>\<mu> \<omega>. fol_equal_everywhere_but v \<mu> \<omega> \<Longrightarrow>
+                          dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<mu> \<Longrightarrow> dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<omega>"
+    proof -
+      fix \<mu> \<omega>
+      assume eq: "fol_equal_everywhere_but v \<mu> \<omega>"
+      assume box: "dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<mu>"
+      show "dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<omega>"
+      proof (unfold dyn_eval.simps(5), intro allI impI)
+        fix \<upsilon>
+        assume step: "prog_eval \<pi> \<omega> \<upsilon>"
+        have eq_rev: "fol_equal_everywhere_but v \<omega> \<mu>"
+          using sym[OF eq] .
+        obtain \<upsilon>' where
+              step': "prog_eval \<pi> \<mu> \<upsilon>'"
+          and match: "fol_equal_everywhere_but v \<upsilon> \<upsilon>'"
+          using nprog eq_rev step
+          unfolding dyn_prog_fv_sem.simps
+          by blast
+        have "dyn_eval \<phi> \<upsilon>'"
+          using box step' by simp
+        then show "dyn_eval \<phi> \<upsilon>"
+          using nfml match
+          unfolding dyn_fv_sem.simps
+          by blast
+      qed
+    qed
+  
+    obtain \<mu> \<omega> where
+          eq: "fol_equal_everywhere_but v \<mu> \<omega>"
+      and diff: "dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<mu> \<noteq> dyn_eval (\<lbrakk>\<pi>\<rbrakk> \<phi>) \<omega>"
+      using assms[unfolded dyn_fv_sem.simps] by blast
+  
+    show False
+      using diff transfer[OF eq] transfer[OF sym[OF eq]]
+      by blast
+  qed
+  
+  lemma dyn_fv_sem_box_subset:
+    "Collect (dyn_fv_sem (\<lbrakk>\<pi>\<rbrakk> \<phi>)) \<subseteq> Collect (dyn_prog_fv_sem \<pi>) \<union> Collect (dyn_fv_sem \<phi>)"
+    using dyn_fv_sem_box_elim by blast
+  
+  lemma dyn_fv_sem_box_disjoint:
+    assumes "Collect (dyn_prog_fv_sem \<pi>) \<inter> S = {}"
+        and "Collect (dyn_fv_sem \<phi>) \<inter> S = {}"
+      shows "Collect (dyn_fv_sem (\<lbrakk>\<pi>\<rbrakk> \<phi>)) \<inter> S = {}"
+    using assms dyn_fv_sem_box_subset by blast
 
   subsubsection\<open>Syntactic Coincidence\<close>
   text\<open>

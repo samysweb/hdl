@@ -1,3 +1,10 @@
+section\<open>Reasoning about Neural Networks\<close>
+text\<open>
+Implementation formalized by Claude Opus after
+intensive discussion with Samuel Teuber on 19th of August 2026.
+Cross-checked by Samuel Teuber.
+\<close>
+
 subsection\<open>Combining Program Signatures\<close>
 text\<open>
 Implementation formalized by Claude Opus after
@@ -49,6 +56,11 @@ lemma sum_prog_fv_simps [simp]:
   "sum_prog_fv (Inl p) = progA_fv p"
   "sum_prog_fv (Inr q) = progB_fv q"
   by (simp_all add: sum_prog_fv_def)
+
+
+sublocale fol:
+  folCore atom_eval atom_fv_syn state_eval
+  using A.folCore_axioms by blast
 
 sublocale sum_dl:
   dynamic_theory atom_eval atom_fv_syn state_eval sum_prog_eval sum_prog_fv
